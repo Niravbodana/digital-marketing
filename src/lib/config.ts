@@ -161,7 +161,8 @@ export async function isFeatureEnabled(key: string): Promise<boolean> {
 
 export async function getOpenAIClient() {
   const OpenAI = (await import("openai")).default;
-  const key = await getConfig("openai_api_key");
+  const { getVaultKey } = await import("./api-keys");
+  const key = await getVaultKey("openai");
   if (!key) return null;
   return new OpenAI({ apiKey: key });
 }

@@ -15,6 +15,32 @@ const DEFAULT_PLANS = [
   { name: "Annual Pro", slug: "pro-annual", priceInr: 7999, originalPriceInr: 11988, creditsPerMonth: 1000, billingPeriod: "yearly", badge: "Save 33%", popular: false, sortOrder: 4, features: ["12000 credits/year", "Everything in Pro", "2 months free", "Annual billing"] },
 ];
 
+const DEFAULT_SHOWCASE = [
+  { type: "video", title: "Cinematic Commercial", subtitle: "30-sec agency spot", mediaUrl: "https://cdn.coverr.co/videos/coverr-a-woman-working-on-her-laptop-9765/1080p.mp4", thumbnailUrl: "https://images.unsplash.com/photo-1611162616475-46b635cb6868?w=800", category: "hero", badge: "🔥 Trending", sortOrder: 1 },
+  { type: "video", title: "UGC Ad Campaign", subtitle: "Scroll-stopping content", mediaUrl: "https://cdn.coverr.co/videos/coverr-vertical-video-of-a-woman-recording-a-vlog-5630/1080p.mp4", thumbnailUrl: "https://images.unsplash.com/photo-1611605698335-8b1569810432?w=800", category: "hero", badge: "Popular", sortOrder: 2 },
+  { type: "image", title: "AI Product Photography", subtitle: "E-commerce ready", mediaUrl: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800", category: "gallery", sortOrder: 3 },
+  { type: "image", title: "Brand Visual Art", subtitle: "Portfolio grade", mediaUrl: "https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=800", category: "gallery", sortOrder: 4 },
+  { type: "video", title: "Music Video", subtitle: "Original track + visuals", mediaUrl: "https://cdn.coverr.co/videos/coverr-a-dj-mixing-music-9764/1080p.mp4", thumbnailUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800", category: "gallery", sortOrder: 5 },
+  { type: "image", title: "Social Ad Creative", subtitle: "Multi-platform ready", mediaUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800", category: "ad", badge: "Ad", sortOrder: 6 },
+  { type: "image", title: "Pitch Deck Design", subtitle: "Investor ready", mediaUrl: "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800", category: "ad", sortOrder: 7 },
+  { type: "video", title: "Explainer Video", subtitle: "Product demo", mediaUrl: "https://cdn.coverr.co/videos/coverr-team-meeting-in-a-modern-office-9763/1080p.mp4", thumbnailUrl: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=800", category: "ad", sortOrder: 8 },
+  { type: "testimonial", title: "Rahul Sharma", subtitle: "Founder, TechStart India — \"Bodana replaced our entire creative agency. ₹2L/month saved.\"", mediaUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200", category: "testimonial", sortOrder: 9 },
+  { type: "testimonial", title: "Priya Patel", subtitle: "Content Creator — \"94 tools, one platform. My reels get 10x more views now.\"", mediaUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200", category: "testimonial", sortOrder: 10 },
+  { type: "testimonial", title: "Amit Verma", subtitle: "Agency Owner — \"We white-label Bodana for 50+ clients. Revenue 3x in 6 months.\"", mediaUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200", category: "testimonial", sortOrder: 11 },
+];
+
+const DEFAULT_KEY_SLOTS = [
+  { provider: "openai", label: "Primary OpenAI", keyValue: "", priority: 10 },
+  { provider: "openai", label: "Backup OpenAI", keyValue: "", priority: 5 },
+  { provider: "elevenlabs", label: "Primary ElevenLabs", keyValue: "", priority: 10 },
+  { provider: "replicate", label: "Primary Replicate", keyValue: "", priority: 10 },
+  { provider: "anthropic", label: "Claude API", keyValue: "", priority: 8 },
+  { provider: "google", label: "Google Gemini", keyValue: "", priority: 8 },
+  { provider: "stability", label: "Stability AI", keyValue: "", priority: 5 },
+  { provider: "postiz", label: "Postiz Main", keyValue: "", priority: 10 },
+  { provider: "razorpay", label: "Razorpay Live", keyValue: "", priority: 10 },
+];
+
 const DEFAULT_PROMOS = [
   { code: "WELCOME50", description: "50% off first purchase", discountType: "percent", discountValue: 50, bonusCredits: 0, maxUses: 1000 },
   { code: "BODANA100", description: "100 bonus credits free", discountType: "bonus_credits", discountValue: 0, bonusCredits: 100, maxUses: 500 },
@@ -47,6 +73,20 @@ export async function initializeApp() {
   if (promoCount === 0) {
     for (const p of DEFAULT_PROMOS) {
       await prisma.promoCode.create({ data: { ...p, active: true } });
+    }
+  }
+
+  const showcaseCount = await prisma.showcaseItem.count();
+  if (showcaseCount === 0) {
+    for (const s of DEFAULT_SHOWCASE) {
+      await prisma.showcaseItem.create({ data: { ...s, active: true } });
+    }
+  }
+
+  const keyCount = await prisma.apiKeyEntry.count();
+  if (keyCount === 0) {
+    for (const k of DEFAULT_KEY_SLOTS) {
+      await prisma.apiKeyEntry.create({ data: { ...k, isActive: true, status: "unknown" } });
     }
   }
 }

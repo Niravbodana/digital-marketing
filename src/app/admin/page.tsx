@@ -1,5 +1,6 @@
 "use client";
 
+import { ApiKeyVaultPanel, ShowcaseAdminPanel } from "@/components/admin/AdminPanels";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -39,6 +40,8 @@ const CATEGORIES = [
   { id: "packages", name: "Credit Packages", icon: "💎", desc: "Pricing plans" },
   { id: "promos", name: "Promo Codes", icon: "🎟️", desc: "Discounts & offers" },
   { id: "subscriptions", name: "Subscriptions", icon: "📋", desc: "Monthly/yearly plans" },
+  { id: "apikeys", name: "API Key Vault", icon: "🔑", desc: "Multiple keys + custom" },
+  { id: "showcase", name: "Showcase Media", icon: "🎬", desc: "Landing page gallery" },
 ];
 
 const TEST_SERVICES = [
@@ -297,6 +300,10 @@ export default function AdminPage() {
                 </div>
               ))}
             </div>
+          ) : tab === "apikeys" ? (
+            <ApiKeyVaultPanel />
+          ) : tab === "showcase" ? (
+            <ShowcaseAdminPanel />
           ) : (
             <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent p-6">
               <div className="flex flex-wrap items-center justify-between gap-4">

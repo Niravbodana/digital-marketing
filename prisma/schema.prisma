@@ -224,3 +224,34 @@ model AgentStep {
   order     Int
   createdAt DateTime @default(now())
 }
+
+model ApiKeyEntry {
+  id        String    @id @default(cuid())
+  provider  String
+  label     String
+  keyValue  String
+  status    String    @default("unknown")
+  priority  Int       @default(0)
+  isActive  Boolean   @default(true)
+  isCustom  Boolean   @default(false)
+  endpoint  String?
+  metadata  String?
+  lastCheck DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model ShowcaseItem {
+  id           String   @id @default(cuid())
+  type         String
+  title        String
+  subtitle     String?
+  mediaUrl     String
+  thumbnailUrl String?
+  category     String
+  badge        String?
+  linkUrl      String?
+  sortOrder    Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
