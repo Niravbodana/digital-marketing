@@ -133,7 +133,25 @@ body {
 .auth-logo { animation: orb-pulse 3s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
-  .auth-orb-drift, .auth-orb-drift-reverse, .auth-logo, .animate-pulse-glow, .animate-marquee, .agent-orb-active {
+  .auth-orb-drift, .auth-orb-drift-reverse, .auth-logo, .animate-pulse-glow, .animate-marquee, .agent-orb-active, .brain-pulse, .brain-dot {
     animation: none !important;
   }
+}
+
+@keyframes brain-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.3); transform: scale(1); }
+  50% { box-shadow: 0 0 40px rgba(139, 92, 246, 0.5); transform: scale(1.03); }
+}
+
+.brain-pulse { animation: brain-pulse 2.5s ease-in-out infinite; }
+
+@keyframes brain-dot-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.brain-dot { animation: brain-dot-pulse 1.2s ease-in-out infinite; }
+
+.brain-thinking {
+  animation: slide-up 0.35s ease-out;
 }

@@ -4,27 +4,11 @@ import { ensureDatabase } from "@/lib/db-init";
 import { prisma } from "@/lib/prisma";
 import { AGENT_TOOLS } from "@/lib/tools";
 import { executeTool } from "@/lib/tool-executor";
-import { pickToolWithAI } from "@/lib/agent";
+import { thinkAboutRequest, searchWeb, buildPlan, getToolFromPlan } from "@/lib/agent-brain";
 import { getCreditCost } from "@/lib/credits";
 import { deductCredits, addCredits } from "@/lib/config";
-import { chatComplete } from "@/lib/ai-router";
 
 export const maxDuration = 120;
-
-async function gatherContext(prompt: string): Promise<string> {
-  try {
-    const result = await chatComplete([
-      {
-        role: "system",
-        content: "You are a creation agent. In 2-3 short bullet points, note what context and approach this request needs. Be concise.",
-      },
-      { role: "user", content: prompt },
-    ], { timeoutMs: 20000 });
-    return result.content.slice(0, 400);
-  } catch {
-    return "Context loaded from your prompt.";
-  }
-}
 
 export async function POST(req: NextRequest) {
   await ensureDatabase();
@@ -49,14 +33,21 @@ export async function POST(req: NextRequest) {
       return s;
     };
 
-    await addStep("understand", "Understanding your request", userInput.slice(0, 200), 1);
+    const intent = await thinkAboutRequest(userInput);
+    await addStep("understand", "Understanding your request", intent.summary, 1);
 
-    const context = await gatherContext(userInput);
-    await addStep("gather", "Gathering intelligence", context, 2);
+    let research = "";
+    if (intent.needsWebResearch && intent.researchQuery) {
+      research = await searchWeb(intent.researchQuery);
+      await addStep("gather", `Research: ${intent.researchQuery}`, research.slice(0, 400) || "Using knowledge base", 2);
+    } else {
+      await addStep("gather", "Context loaded", intent.thinkingTrace.slice(0, 300), 2);
+    }
 
+    const plan = await buildPlan(userInput, intent, research);
     const tool = toolId
       ? AGENT_TOOLS.find((t) => t.id === toolId)
-      : await pickToolWithAI(userInput);
+      : getToolFromPlan(plan, toolId);
 
     if (!tool) {
       await prisma.agentRun.update({ where: { id: run.id }, data: { status: "failed" } });
@@ -74,12 +65,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Insufficient credits", creditsNeeded: cost }, { status: 402 });
     }
 
-    await addStep("planning", `Tool selected: ${tool.name}`, `${tool.description} · ${cost} credits`, 3);
+    await addStep("planning", `Plan: ${plan.selectedToolName}`, `${plan.reasoning}\n${plan.steps.join(" → ")}`, 3);
     await addStep("create", "Creating your asset", `Generating ${tool.outputType} output`, 4, "running");
 
     let output;
     try {
-      output = await executeTool(tool, userInput);
+      output = await executeTool(tool, userInput, { intent, research, plan });
     } catch (e) {
       if (creditsDeducted) {
         await addCredits(user.id, cost, "refund", `refund_${run.id}`);
