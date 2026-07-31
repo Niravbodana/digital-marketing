@@ -1,41 +1,88 @@
-# Bodana Digital
+# Bodana Digital — Full AI Marketing Platform
 
-A modern, premium marketing website for **Bodana Digital** — growth-driven digital marketing by Nirav Bodana.
+Landing page + **AI Studio Dashboard** with prompt-driven tasks, Instagram preview, and end-to-end account connect.
 
-> **New repository:** This branch is the standalone website. To publish as its own repo:
-> 1. Create `bodana-digital` on GitHub
-> 2. `git remote set-url origin https://github.com/Niravbodana/bodana-digital.git`
-> 3. `git push -u origin main`
+## Features (A to Z)
 
-## Features
-
-- Responsive dark-theme design
-- Sections: Hero, Services, Process, About, Testimonials, Contact
-- Built with Next.js 16, TypeScript, Tailwind CSS
-- Ready to deploy on Vercel
+| Feature | Status |
+|---|---|
+| AI prompt → auto task start | ✅ |
+| Caption & hashtag generation | ✅ |
+| Instagram live preview | ✅ |
+| Quick tools panel | ✅ |
+| Demo Instagram connect | ✅ |
+| Real Instagram OAuth (Meta) | ✅ (needs Meta App) |
+| Publish to Instagram | ✅ |
+| Task history | ✅ |
+| Postiz cross-post API | ✅ (optional) |
 
 ## Quick Start
 
 ```bash
 npm install
+cp .env.example .env
+# Add your OPENAI_API_KEY in .env
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Open:
+- **Landing:** http://localhost:3000
+- **AI Studio:** http://localhost:3000/dashboard
+
+## Environment Variables
+
+```env
+DATABASE_URL="file:./dev.db"
+OPENAI_API_KEY="sk-..."          # Your AI API key
+OPENAI_MODEL="gpt-4o-mini"
+
+# Real Instagram OAuth (optional)
+META_APP_ID=""
+META_APP_SECRET=""
+META_REDIRECT_URI="http://localhost:3000/api/instagram/callback"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+
+# Postiz (optional)
+POSTIZ_API_KEY=""
+POSTIZ_URL="http://localhost:4007"
+```
+
+## How to Use (Prompt Only)
+
+Go to `/dashboard` and type:
+
+- `Instagram ke liye fitness post banao`
+- `Kal subah 10 baje motivational post schedule karo`
+- `Digital marketing hashtags generate karo`
+- `Instagram account connect karo`
+- `Post publish karo`
+
+## Instagram Real Connect Setup
+
+1. Create app at [developers.facebook.com](https://developers.facebook.com)
+2. Add **Instagram Graph API** product
+3. Add OAuth redirect: `http://localhost:3000/api/instagram/callback`
+4. Set `META_APP_ID` and `META_APP_SECRET` in `.env`
+5. Click **Connect Instagram (Real)** in dashboard
+
+> Instagram account must be **Business** or **Creator**, linked to a Facebook Page.
+
+## Demo Mode
+
+Without Meta credentials, click **Demo Account Connect** — full flow works (generate, preview, publish simulated).
 
 ## Deploy
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Niravbodana/bodana-digital)
+```bash
+npm run build
+npm start
+```
 
-## Customize
-
-- **Brand name/colors:** `src/app/globals.css`, components
-- **Content:** `src/components/*.tsx`
-- **Contact email:** `src/components/Contact.tsx` and `About.tsx`
-- **SEO:** `src/app/layout.tsx` metadata
+Deploy to Vercel — add env vars in dashboard.
 
 ## Tech Stack
 
-- Next.js App Router
-- TypeScript
-- Tailwind CSS v4
+- Next.js 16 · TypeScript · Tailwind CSS v4
+- Prisma · SQLite
+- OpenAI API
+- Meta Instagram Graph API
