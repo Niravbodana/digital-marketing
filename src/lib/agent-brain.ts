@@ -67,13 +67,14 @@ Return ONLY valid JSON:
   "needsWebResearch": true/false,
   "researchQuery": "search query if needed else empty",
   "suggestedApproach": "how you will execute",
-  "replyToUser": "2-3 sentences acknowledging user in their language (Hindi/English mix ok)",
-  "thinkingTrace": "your internal reasoning stream — what you're noticing, questioning, deciding (3-5 lines, first person)"
+  "replyToUser": "2-3 sentences acknowledging user in their language (Hindi/English mix ok). NO EMOJIS.",
+  "thinkingTrace": "your internal reasoning stream — what you're noticing, questioning, deciding (3-5 lines, first person). NO EMOJIS."
 }`,
       },
       { role: "user", content: prompt },
     ], { timeoutMs: 45000 });
 
+    const strip = (s: string) => s.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}]/gu, "").trim();
     const raw = result.content.replace(/```json\n?|\n?```/g, "").trim();
     const parsed = JSON.parse(raw);
     return {
@@ -85,8 +86,8 @@ Return ONLY valid JSON:
       needsWebResearch: Boolean(parsed.needsWebResearch),
       researchQuery: String(parsed.researchQuery || ""),
       suggestedApproach: String(parsed.suggestedApproach || ""),
-      replyToUser: String(parsed.replyToUser || `Got it — working on: ${prompt.slice(0, 100)}`),
-      thinkingTrace: String(parsed.thinkingTrace || "Processing request…"),
+      replyToUser: strip(String(parsed.replyToUser || `Got it — working on: ${prompt.slice(0, 100)}`)),
+      thinkingTrace: strip(String(parsed.thinkingTrace || "Processing request…")),
     };
   } catch {
     return {

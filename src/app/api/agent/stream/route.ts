@@ -2,10 +2,15 @@ import { NextRequest } from "next/server";
 import { getSession } from "@/lib/auth";
 import { ensureDatabase } from "@/lib/db-init";
 import { prisma } from "@/lib/prisma";
-import { executeTool } from "@/lib/tool-executor";
 import { getCreditCost } from "@/lib/credits";
 import { deductCredits, addCredits } from "@/lib/config";
-import { thinkAboutRequest, searchWeb, buildPlan, getToolFromPlan } from "@/lib/agent-brain";
+import { runAgentLoop, type AgentAction } from "@/lib/agent-runtime";
+import {
+  loadUserMemory,
+  getOrCreateConversation,
+  appendMessage,
+  loadRecentTurns,
+} from "@/lib/agent-memory";
 
 export const maxDuration = 120;
 
@@ -20,8 +25,11 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({ error: "Login required" }), { status: 401 });
   }
 
-  const { prompt, toolId } = await req.json();
-  const userInput = String(prompt || "").trim();
+  const body = await req.json();
+  const userInput = String(body.prompt || "").trim();
+  const toolId = body.toolId ? String(body.toolId) : undefined;
+  const conversationIdIn = body.conversationId ? String(body.conversationId) : undefined;
+
   if (!userInput) {
     return new Response(JSON.stringify({ error: "Prompt required" }), { status: 400 });
   }
@@ -36,75 +44,144 @@ export async function POST(req: NextRequest) {
       let cost = 0;
 
       try {
+        const memory = await loadUserMemory(user.id);
+        const conversation = conversationIdIn
+          ? await prisma.conversation.findFirst({
+              where: { id: conversationIdIn, userId: user.id },
+              include: { messages: { orderBy: { createdAt: "asc" }, take: 40 } },
+            }) || await getOrCreateConversation(user.id, userInput.slice(0, 60))
+          : await getOrCreateConversation(user.id, userInput.slice(0, 60));
+
+        const history = await loadRecentTurns(conversation.id, 12);
+        await appendMessage(conversation.id, "user", userInput);
+
+        send({ type: "session", conversationId: conversation.id });
+
         const run = await prisma.agentRun.create({
           data: { userId: user.id, prompt: userInput, status: "thinking" },
         });
         runId = run.id;
 
-        send({ type: "thinking", content: "Reading your message and identifying what you actually need…" });
+        let stepOrder = 0;
+        const emit = (action: AgentAction) => {
+          send(action);
+          // Persist key steps for run history
+          if (action.type === "thinking" && action.status === "done") {
+            stepOrder += 1;
+            prisma.agentStep
+              .create({
+                data: {
+                  runId,
+                  phase: "understand",
+                  title: "Thinking",
+                  content: action.content.slice(0, 2000),
+                  order: stepOrder,
+                  status: "done",
+                },
+              })
+              .catch(() => null);
+          }
+          if (action.type === "tool" && action.status === "done") {
+            stepOrder += 1;
+            prisma.agentStep
+              .create({
+                data: {
+                  runId,
+                  phase: action.name === "WebSearch" ? "gather" : "create",
+                  title: action.name,
+                  content: (action.result || action.detail).slice(0, 2000),
+                  order: stepOrder,
+                  status: "done",
+                },
+              })
+              .catch(() => null);
+          }
+          if (action.type === "plan" && action.status === "done") {
+            stepOrder += 1;
+            prisma.agentStep
+              .create({
+                data: {
+                  runId,
+                  phase: "planning",
+                  title: "Plan",
+                  content: action.steps.join(" → ").slice(0, 2000),
+                  order: stepOrder,
+                  status: "done",
+                },
+              })
+              .catch(() => null);
+          }
+        };
 
-        const intent = await thinkAboutRequest(userInput);
-        send({ type: "thinking", content: intent.thinkingTrace });
-        send({ type: "assistant", content: intent.replyToUser });
+        // Pre-deduct credits based on guessed type after think — we deduct inside after plan
+        // Use a two-phase approach: run loop but intercept create... Actually runAgentLoop does create inside.
+        // So we need to deduct before create. We'll estimate cost from prompt heuristically first,
+        // then adjust. Simpler: deduct after plan by wrapping — for now deduct mid-stream via custom flow.
 
-        await prisma.agentStep.create({
-          data: { runId, phase: "understand", title: "Understanding", content: intent.summary, order: 1, status: "done" },
-        });
-
-        let research = "";
-        if (intent.needsWebResearch && intent.researchQuery) {
-          send({ type: "search", query: intent.researchQuery, results: "Searching the web…" });
-          research = await searchWeb(intent.researchQuery);
-          send({ type: "search", query: intent.researchQuery, results: research || "Using internal knowledge base." });
-          await prisma.agentStep.create({
-            data: { runId, phase: "gather", title: "Research", content: research.slice(0, 500), order: 2, status: "done" },
-          });
-        } else {
-          send({ type: "thinking", content: "No external search needed — I have enough context from your prompt." });
-        }
-
-        send({ type: "thinking", content: "Building execution plan and selecting the right capability…" });
-        const plan = await buildPlan(userInput, intent, research);
-        send({ type: "plan", steps: plan.steps, reasoning: plan.reasoning });
-
-        const tool = getToolFromPlan(plan, toolId);
-        const costType = tool.outputType === "image" ? "image" : tool.outputType === "video" ? "video" : tool.outputType === "audio" ? "audio" : "text";
-        cost = await getCreditCost(costType);
+        // Run until plan is known by doing a lightweight estimate first
+        const roughType = /image|logo|photo|banner|poster|graphic|art/i.test(userInput)
+          ? "image"
+          : /video|reel|trailer/i.test(userInput)
+            ? "video"
+            : /song|music|voice|audio/i.test(userInput)
+              ? "audio"
+              : "text";
+        cost = await getCreditCost(roughType);
 
         try {
-          await deductCredits(user.id, cost, tool.name);
+          await deductCredits(user.id, cost, "Agent run");
           creditsDeducted = true;
         } catch {
-          send({ type: "error", error: "Insufficient credits", creditsNeeded: cost });
+          send({ type: "error", id: "err-credits", error: "Insufficient credits" });
           controller.close();
           return;
         }
 
-        await prisma.agentStep.create({
-          data: { runId, phase: "planning", title: plan.selectedToolName, content: plan.reasoning, order: 3, status: "done" },
+        const result = await runAgentLoop({
+          userId: user.id,
+          prompt: userInput,
+          toolId,
+          memory,
+          history,
+          emit,
         });
 
-        send({ type: "status", content: `Creating with ${tool.name}…`, active: true });
+        // Adjust credits if actual output type differs
+        const actualType =
+          result.tool.outputType === "image"
+            ? "image"
+            : result.tool.outputType === "video"
+              ? "video"
+              : result.tool.outputType === "audio"
+                ? "audio"
+                : "text";
+        const actualCost = await getCreditCost(actualType);
+        if (actualCost !== cost) {
+          const diff = actualCost - cost;
+          if (diff > 0) {
+            try {
+              await deductCredits(user.id, diff, `${result.tool.name} adjust`);
+              cost = actualCost;
+            } catch {
+              // keep original charge
+            }
+          } else if (diff < 0) {
+            await addCredits(user.id, -diff, "refund", `adjust_${runId}`);
+            cost = actualCost;
+          }
+        }
 
-        const output = await executeTool(tool, userInput, { intent, research, plan });
-
-        await prisma.agentStep.create({
-          data: { runId, phase: "create", title: "Created", content: output.title, order: 4, status: "done" },
-        });
-        await prisma.agentStep.create({
-          data: { runId, phase: "deliver", title: "Ready", content: output.downloadName, order: 5, status: "done" },
+        await appendMessage(conversation.id, "assistant", result.think.replyToUser, {
+          toolId: result.tool.id,
+          title: result.output.title,
         });
         await prisma.agentRun.update({ where: { id: runId }, data: { status: "completed" } });
 
-        const updatedUser = await prisma.user.findUnique({ where: { id: user.id }, select: { credits: true } });
-
-        send({
-          type: "output",
-          output,
-          tool: { id: tool.id, name: tool.name },
-          credits: updatedUser?.credits,
+        const updatedUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { credits: true },
         });
-        send({ type: "done" });
+        send({ type: "credits", credits: updatedUser?.credits });
       } catch (e) {
         if (creditsDeducted && runId) {
           await addCredits(user.id, cost, "refund", `refund_${runId}`);
@@ -112,7 +189,11 @@ export async function POST(req: NextRequest) {
         if (runId) {
           await prisma.agentRun.update({ where: { id: runId }, data: { status: "failed" } }).catch(() => null);
         }
-        send({ type: "error", error: e instanceof Error ? e.message : "Agent failed" });
+        send({
+          type: "error",
+          id: "err",
+          error: e instanceof Error ? e.message : "Agent failed",
+        });
       } finally {
         controller.close();
       }

@@ -1,14 +1,65 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
+/** Cursor-style live action blocks — no emojis */
 export type BrainMessage =
   | { id: string; role: "user"; content: string }
   | { id: string; role: "assistant"; content: string }
-  | { id: string; role: "thinking"; content: string; expanded?: boolean }
-  | { id: string; role: "search"; query: string; results: string }
-  | { id: string; role: "plan"; steps: string[]; reasoning: string }
-  | { id: string; role: "status"; content: string; active?: boolean };
+  | { id: string; role: "thinking"; content: string; status: "running" | "done" }
+  | { id: string; role: "tool"; name: string; detail: string; status: "running" | "done" | "error"; result?: string }
+  | { id: string; role: "plan"; steps: string[]; reasoning: string; status: "running" | "done" }
+  | { id: string; role: "memory"; content: string; status: "running" | "done" };
+
+function StatusDot({ status }: { status: "running" | "done" | "error" }) {
+  if (status === "running") {
+    return <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-sky-400 action-pulse" />;
+  }
+  if (status === "error") {
+    return <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-red-400" />;
+  }
+  return <span className="mt-0.5 flex h-2 w-2 shrink-0 items-center justify-center rounded-full bg-emerald-500/80 text-[7px] leading-none text-black">✓</span>;
+}
+
+function ActionShell({
+  label,
+  status,
+  children,
+  defaultOpen,
+}: {
+  label: string;
+  status: "running" | "done" | "error";
+  children: ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen ?? status === "running");
+
+  useEffect(() => {
+    if (status === "running") setOpen(true);
+  }, [status]);
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-white/[0.07] bg-white/[0.02]">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2.5 px-3 py-2 text-left transition hover:bg-white/[0.03]"
+      >
+        <StatusDot status={status} />
+        <span className="font-mono text-[11px] font-medium tracking-wide text-neutral-300">{label}</span>
+        <span className="ml-auto font-mono text-[10px] uppercase tracking-wider text-neutral-600">
+          {status === "running" ? "running" : status === "error" ? "error" : "done"}
+        </span>
+        <span className="text-[10px] text-neutral-600">{open ? "▾" : "▸"}</span>
+      </button>
+      {open && (
+        <div className="border-t border-white/[0.05] px-3 py-2.5 font-mono text-[11px] leading-relaxed text-neutral-400">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function BrainChat({
   messages,
@@ -26,22 +77,24 @@ export function BrainChat({
   if (!messages.length && !loading) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="brain-pulse mb-4 h-16 w-16 rounded-full border border-violet-500/30 bg-violet-500/10" />
-        <p className="text-sm text-neutral-400">AI Brain ready</p>
-        <p className="mt-1 max-w-sm text-xs text-neutral-600">
-          I&apos;ll think, research, plan, then create — like ChatGPT + Cursor combined.
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] font-mono text-[10px] tracking-widest text-neutral-500">
+          AGENT
+        </div>
+        <p className="text-sm text-neutral-400">Ready — same loop as Cursor Agent</p>
+        <p className="mt-2 max-w-sm font-mono text-[11px] leading-relaxed text-neutral-600">
+          think → recall memory → search → plan → act → reply
         </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {messages.map((m) => {
         if (m.role === "user") {
           return (
             <div key={m.id} className="flex justify-end">
-              <div className="max-w-[85%] rounded-2xl rounded-br-md bg-white/10 px-4 py-3 text-sm text-neutral-100">
+              <div className="max-w-[85%] rounded-xl rounded-br-sm bg-white/[0.08] px-4 py-2.5 text-sm text-neutral-100">
                 {m.content}
               </div>
             </div>
@@ -51,7 +104,7 @@ export function BrainChat({
         if (m.role === "assistant") {
           return (
             <div key={m.id} className="flex justify-start">
-              <div className="max-w-[90%] rounded-2xl rounded-bl-md border border-white/[0.06] bg-black/40 px-4 py-3 text-sm leading-relaxed text-neutral-300 backdrop-blur-sm">
+              <div className="max-w-[92%] rounded-xl rounded-bl-sm border border-white/[0.06] bg-black/40 px-4 py-3 text-sm leading-relaxed text-neutral-300">
                 {m.content}
               </div>
             </div>
@@ -60,59 +113,61 @@ export function BrainChat({
 
         if (m.role === "thinking") {
           return (
-            <div key={m.id} className="brain-thinking rounded-xl border border-violet-500/20 bg-violet-500/[0.06] px-4 py-3">
-              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-violet-400">
-                <span className="brain-dot h-2 w-2 rounded-full bg-violet-400" />
-                Thinking
-              </div>
-              <pre className="mt-2 whitespace-pre-wrap font-sans text-xs leading-relaxed text-violet-200/80">{m.content}</pre>
-            </div>
+            <ActionShell key={m.id} label="Thinking" status={m.status} defaultOpen>
+              <pre className="whitespace-pre-wrap font-mono text-[11px] text-sky-200/70">{m.content}</pre>
+            </ActionShell>
           );
         }
 
-        if (m.role === "search") {
+        if (m.role === "memory") {
           return (
-            <div key={m.id} className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] px-4 py-3">
-              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-cyan-400">
-                <span className="h-2 w-2 rounded-full bg-cyan-400" />
-                Searching · {m.query}
+            <ActionShell key={m.id} label="Memory" status={m.status}>
+              <pre className="whitespace-pre-wrap font-mono text-[11px] text-amber-100/60">{m.content}</pre>
+            </ActionShell>
+          );
+        }
+
+        if (m.role === "tool") {
+          return (
+            <ActionShell
+              key={m.id}
+              label={`${m.name}${m.detail ? ` · ${m.detail.slice(0, 48)}` : ""}`}
+              status={m.status}
+              defaultOpen={m.status === "running"}
+            >
+              <div className="space-y-2">
+                <p className="text-neutral-500">Input: {m.detail}</p>
+                {m.result && (
+                  <pre className="max-h-40 overflow-y-auto whitespace-pre-wrap text-neutral-400">{m.result}</pre>
+                )}
+                {m.status === "running" && (
+                  <p className="action-pulse text-sky-400/80">Executing…</p>
+                )}
               </div>
-              <p className="mt-2 line-clamp-6 text-xs leading-relaxed text-cyan-100/70">{m.results || "Gathering sources…"}</p>
-            </div>
+            </ActionShell>
           );
         }
 
         if (m.role === "plan") {
           return (
-            <div key={m.id} className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] px-4 py-3">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-blue-400">Planning</div>
-              <ol className="mt-2 list-decimal space-y-1 pl-4 text-xs text-blue-100/80">
+            <ActionShell key={m.id} label="Plan" status={m.status} defaultOpen>
+              <ol className="list-decimal space-y-1 pl-4 text-neutral-400">
                 {m.steps.map((s, i) => (
                   <li key={i}>{s}</li>
                 ))}
               </ol>
-              <p className="mt-2 text-[11px] text-neutral-500">{m.reasoning}</p>
-            </div>
-          );
-        }
-
-        if (m.role === "status") {
-          return (
-            <div key={m.id} className="flex items-center gap-2 text-xs text-orange-300/90">
-              {m.active && (
-                <span className="h-3 w-3 animate-spin rounded-full border-2 border-orange-400/20 border-t-orange-400" />
-              )}
-              {m.content}
-            </div>
+              {m.reasoning && <p className="mt-2 text-neutral-600">{m.reasoning}</p>}
+            </ActionShell>
           );
         }
 
         return null;
       })}
-      {loading && messages[messages.length - 1]?.role !== "status" && (
-        <div className="flex items-center gap-2 text-xs text-violet-300">
-          <span className="h-3 w-3 animate-spin rounded-full border-2 border-violet-400/20 border-t-violet-400" />
-          Brain processing…
+
+      {loading && (
+        <div className="flex items-center gap-2 font-mono text-[11px] text-neutral-500">
+          <span className="h-3 w-3 animate-spin rounded-full border border-white/10 border-t-sky-400" />
+          agent running
         </div>
       )}
       <div ref={bottomRef} />
