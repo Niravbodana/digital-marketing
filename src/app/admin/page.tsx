@@ -161,6 +161,7 @@ export default function AdminPage() {
   }
 
   const categoryConfigs = configs.filter((c) => c.category === tab);
+  const appBase = (edits.app_url || configs.find((c) => c.key === "app_url")?.value || "http://localhost:3000").replace(/\/$/, "");
 
   return (
     <div className="min-h-screen bg-[#030308] text-white">
@@ -380,8 +381,8 @@ export default function AdminPage() {
           <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-6">
             <h3 className="text-sm font-semibold text-neutral-400">Quick Reference — OAuth Redirect URLs</h3>
             <div className="mt-3 space-y-2 font-mono text-xs text-neutral-500">
-              <p>Meta OAuth: <span className="text-orange-400">{typeof window !== "undefined" ? window.location.origin : ""}/api/instagram/callback</span></p>
-              <p>Razorpay Webhook: <span className="text-orange-400">{typeof window !== "undefined" ? window.location.origin : ""}/api/payments/razorpay/webhook</span></p>
+              <p>Meta OAuth: <span className="text-orange-400">{appBase}/api/instagram/callback</span></p>
+              <p>Razorpay Webhook: <span className="text-orange-400">{appBase}/api/payments/razorpay/webhook</span></p>
               <p>Postiz: Admin → Social → postiz_url + postiz_api_key</p>
             </div>
           </div>
