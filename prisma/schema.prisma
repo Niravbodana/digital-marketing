@@ -7,14 +7,49 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String   @default("client")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  accounts     ConnectedAccount[]
+  tasks        Task[]
+  posts        Post[]
+  agentRuns    AgentRun[]
+  apiKeys      ApiKey[]
+}
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider  String
+  keyValue  String
+  status    String   @default("unknown")
+  lastCheck DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, provider])
+}
+
 model ConnectedAccount {
   id              String   @id @default(cuid())
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   platform        String   @default("instagram")
   username        String
   displayName     String?
   profilePicture  String?
   accountId       String   @unique
   accessToken     String
+  followers       Int      @default(0)
+  following       Int      @default(0)
+  postsCount      Int      @default(0)
+  bio             String?
   tokenExpiresAt  DateTime?
   isDemo          Boolean  @default(false)
   createdAt       DateTime @default(now())
@@ -24,6 +59,8 @@ model ConnectedAccount {
 
 model Task {
   id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   prompt      String
   title       String
   status      String   @default("pending")
@@ -36,6 +73,8 @@ model Task {
 
 model Post {
   id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   caption     String
   hashtags    String?
   imageUrl    String?
@@ -46,4 +85,27 @@ model Post {
   account     ConnectedAccount? @relation(fields: [accountId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model AgentRun {
+  id        String      @id @default(cuid())
+  userId    String?
+  user      User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt    String
+  status    String      @default("thinking")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  steps     AgentStep[]
+}
+
+model AgentStep {
+  id        String   @id @default(cuid())
+  runId     String
+  run       AgentRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  phase     String
+  title     String
+  content   String
+  status    String   @default("running")
+  order     Int
+  createdAt DateTime @default(now())
 }

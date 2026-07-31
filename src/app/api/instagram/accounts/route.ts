@@ -1,41 +1,20 @@
 import { NextResponse } from "next/server";
+import { ensureDatabase } from "@/lib/db-init";
 import { prisma } from "@/lib/prisma";
-import { createDemoAccount } from "@/lib/instagram";
+import { getSession } from "@/lib/auth";
 
 export async function GET() {
+  await ensureDatabase();
+  const user = await getSession();
   const accounts = await prisma.connectedAccount.findMany({
-    where: { platform: "instagram" },
+    where: user ? { userId: user.id } : undefined,
     orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      username: true,
-      displayName: true,
-      profilePicture: true,
-      isDemo: true,
-      createdAt: true,
-    },
   });
   return NextResponse.json({ accounts });
 }
 
-export async function POST(req: Request) {
-  const { demo } = await req.json();
-
-  if (demo) {
-    const data = createDemoAccount();
-    const existing = await prisma.connectedAccount.findFirst({
-      where: { username: data.username, isDemo: true },
-    });
-    if (existing) return NextResponse.json({ account: existing });
-
-    const account = await prisma.connectedAccount.create({ data });
-    return NextResponse.json({ account });
-  }
-
-  return NextResponse.json({ error: "Use GET /api/instagram/auth for real OAuth" }, { status: 400 });
-}
-
 export async function DELETE(req: Request) {
+  await ensureDatabase();
   const { id } = await req.json();
   await prisma.connectedAccount.delete({ where: { id } });
   return NextResponse.json({ success: true });
