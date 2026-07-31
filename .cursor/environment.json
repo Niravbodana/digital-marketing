@@ -1,0 +1,11 @@
+{
+  "name": "digital-marketing-postiz",
+  "install": "npm install && chmod +x scripts/*.sh",
+  "start": "if ! docker info >/dev/null 2>&1; then sudo dockerd --storage-driver=vfs >/tmp/dockerd.log 2>&1 & sleep 5; fi; if [ -f postiz/docker-compose.yml ]; then cd postiz && sudo docker compose up -d; fi",
+  "terminals": [
+    {
+      "name": "postiz",
+      "command": "cd postiz && sudo docker compose logs -f postiz"
+    }
+  ]
+}
