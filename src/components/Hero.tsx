@@ -23,10 +23,10 @@ export function Hero() {
 
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <a
-            href="#contact"
+            href="/dashboard"
             className="glow rounded-full bg-gradient-to-r from-indigo-500 to-violet-600 px-8 py-3.5 text-sm font-semibold text-white transition hover:opacity-90"
           >
-            Book a Free Strategy Call
+            Open AI Studio — Start Free
           </a>
           <a
             href="#services"

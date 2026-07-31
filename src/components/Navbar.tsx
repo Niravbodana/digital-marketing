@@ -38,10 +38,10 @@ export function Navbar() {
         </ul>
 
         <a
-          href="#contact"
+          href="/dashboard"
           className="hidden rounded-full bg-indigo-500 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-400 md:inline-flex"
         >
-          Get Started
+          Open Studio
         </a>
 
         <button
