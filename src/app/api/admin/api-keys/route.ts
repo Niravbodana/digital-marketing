@@ -9,7 +9,6 @@ export async function GET() {
   const user = await getSession();
   if (!user || user.role !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
 
-  const showSecrets = false;
   const keys = await prisma.apiKeyEntry.findMany({
     orderBy: [{ provider: "asc" }, { priority: "desc" }],
   });
@@ -17,7 +16,7 @@ export async function GET() {
   return NextResponse.json({
     keys: keys.map((k) => ({
       ...k,
-      keyValue: showSecrets ? k.keyValue : k.keyValue ? "••••••••" + k.keyValue.slice(-4) : "",
+      keyValue: k.keyValue || "",
     })),
     providers: API_PROVIDERS,
     stats: {
@@ -34,6 +33,12 @@ export async function POST(req: NextRequest) {
   if (!user || user.role !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
 
   const body = await req.json();
+
+  if (body.action === "smart-add") {
+    const { smartAddKey } = await import("@/lib/ai-router");
+    const result = await smartAddKey(body.keyValue);
+    return NextResponse.json(result);
+  }
 
   if (body.action === "test") {
     const result = await testVaultKey(body.id);
@@ -72,10 +77,10 @@ export async function POST(req: NextRequest) {
 
   const entry = await prisma.apiKeyEntry.create({
     data: {
-      provider: body.provider || "custom",
-      label: body.label || `${body.provider} Key`,
+      provider: body.provider || (body.keyValue ? (await import("@/lib/ai-router")).detectProviderFromKeyAny(body.keyValue) : "custom"),
+      label: body.label || `${body.provider || "API"} Key`,
       keyValue: body.keyValue,
-      priority: body.priority || 0,
+      priority: body.priority || 10,
       isCustom: body.provider === "custom" || body.isCustom,
       endpoint: body.endpoint,
       metadata: body.metadata,

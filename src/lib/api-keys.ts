@@ -2,11 +2,12 @@ import { prisma } from "./prisma";
 import { getConfig } from "./config";
 
 export const API_PROVIDERS = [
-  { id: "openai", name: "OpenAI", icon: "🤖" },
+  { id: "openai", name: "OpenAI", icon: "🤖", hint: "sk-..." },
+  { id: "groq", name: "Groq (Free/Fast)", icon: "⚡", hint: "gsk_..." },
+  { id: "google", name: "Google Gemini", icon: "🔍", hint: "AIza..." },
+  { id: "anthropic", name: "Anthropic Claude", icon: "🧠", hint: "sk-ant-..." },
   { id: "elevenlabs", name: "ElevenLabs", icon: "🎙️" },
-  { id: "replicate", name: "Replicate", icon: "🎬" },
-  { id: "anthropic", name: "Anthropic Claude", icon: "🧠" },
-  { id: "google", name: "Google AI", icon: "🔍" },
+  { id: "replicate", name: "Replicate (Video)", icon: "🎬" },
   { id: "stability", name: "Stability AI", icon: "🖼️" },
   { id: "runway", name: "Runway ML", icon: "🎥" },
   { id: "razorpay", name: "Razorpay", icon: "💳" },
@@ -77,6 +78,35 @@ export async function testVaultKey(id: string): Promise<{ status: string; messag
         const OpenAI = (await import("openai")).default;
         const client = new OpenAI({ apiKey: entry.keyValue });
         await client.models.list();
+        break;
+      }
+      case "groq": {
+        const res = await fetch("https://api.groq.com/openai/v1/models", {
+          headers: { Authorization: `Bearer ${entry.keyValue}` },
+        });
+        if (!res.ok) throw new Error("Invalid Groq key");
+        break;
+      }
+      case "google": {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${entry.keyValue}`);
+        if (!res.ok) throw new Error("Invalid Gemini key");
+        break;
+      }
+      case "anthropic": {
+        const res = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "x-api-key": entry.keyValue,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "claude-3-5-haiku-20241022",
+            max_tokens: 10,
+            messages: [{ role: "user", content: "hi" }],
+          }),
+        });
+        if (!res.ok) throw new Error("Invalid Anthropic key");
         break;
       }
       case "elevenlabs": {

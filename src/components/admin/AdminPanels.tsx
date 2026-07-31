@@ -15,6 +15,9 @@ export function ApiKeyVaultPanel() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [stats, setStats] = useState({ total: 0, online: 0, active: 0 });
   const [form, setForm] = useState({ provider: "openai", label: "", keyValue: "", priority: 10, endpoint: "", isCustom: false });
+  const [smartKey, setSmartKey] = useState("");
+  const [smartLoading, setSmartLoading] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [showKey, setShowKey] = useState<Record<string, boolean>>({});
   const [msg, setMsg] = useState("");
 
@@ -66,10 +69,38 @@ export function ApiKeyVaultPanel() {
     load();
   }
 
+  async function smartAdd(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = smartKey.trim();
+    if (!trimmed) return;
+    setSmartLoading(true);
+    setMsg("");
+    try {
+      const res = await fetch("/api/admin/api-keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "smart-add", keyValue: trimmed }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMsg(`❌ ${data.error || "Failed to connect key"}`);
+      } else {
+        const icon = data.status === "online" ? "✅" : "⚠️";
+        setMsg(`${icon} ${data.provider?.toUpperCase()} connected · Model: ${data.model} · ${data.message}`);
+        setSmartKey("");
+      }
+      load();
+    } catch {
+      setMsg("❌ Connection failed — try again");
+    } finally {
+      setSmartLoading(false);
+    }
+  }
+
   const grouped = providers.map((p) => ({
     ...p,
-    keys: keys.filter((k) => k.provider === p.id),
-  })).filter((g) => g.keys.length > 0 || ["openai", "elevenlabs", "replicate", "custom"].includes(g.id));
+    keys: keys.filter((k) => k.provider === p.id && k.keyValue && k.keyValue.length > 3),
+  })).filter((g) => g.keys.length > 0 || ["openai", "groq", "google", "elevenlabs", "replicate", "custom"].includes(g.id));
 
   return (
     <div className="space-y-6">
@@ -88,10 +119,42 @@ export function ApiKeyVaultPanel() {
 
       {msg && <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm">{msg}</div>}
 
+      <div className="rounded-2xl border border-orange-500/20 bg-gradient-to-b from-orange-500/5 to-transparent p-6">
+        <h2 className="text-lg font-semibold">⚡ Quick Connect — Paste API Key</h2>
+        <p className="mt-1 text-sm text-neutral-500">
+          OpenAI, Groq, Gemini, Claude — bas key paste karo. Provider + best model auto-detect hoga. Multiple keys = background failover.
+        </p>
+        <form onSubmit={smartAdd} className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <input
+            value={smartKey}
+            onChange={(e) => setSmartKey(e.target.value)}
+            placeholder="sk-... / gsk_... / AIza... / sk-ant-..."
+            type="password"
+            disabled={smartLoading}
+            className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 font-mono text-sm disabled:opacity-50"
+          />
+          <button
+            type="submit"
+            disabled={smartLoading || !smartKey.trim()}
+            className="rounded-xl bg-gradient-to-r from-orange-500 to-purple-600 px-6 py-3 text-sm font-semibold disabled:opacity-40"
+          >
+            {smartLoading ? "Connecting..." : "Auto Connect"}
+          </button>
+        </form>
+        <p className="mt-2 text-[10px] text-neutral-600">
+          Failover admin panel mein dikhega — client ko nahi. Token khatam hone par next key use hoti hai.
+        </p>
+      </div>
+
       <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent p-6">
-        <h2 className="text-lg font-semibold">🔑 Add API Key</h2>
-        <p className="mt-1 text-sm text-neutral-500">Multiple keys per provider with priority & auto-failover</p>
-        <form onSubmit={addKey} className="mt-4 grid gap-3 md:grid-cols-2">
+        <button type="button" onClick={() => setShowAdvanced(!showAdvanced)} className="flex w-full items-center justify-between text-left">
+          <div>
+            <h2 className="text-lg font-semibold">🔑 Advanced Add</h2>
+            <p className="mt-1 text-sm text-neutral-500">Custom provider, label, priority</p>
+          </div>
+          <span className="text-neutral-500">{showAdvanced ? "▲" : "▼"}</span>
+        </button>
+        {showAdvanced && <form onSubmit={addKey} className="mt-4 grid gap-3 md:grid-cols-2">
           <select value={form.provider} onChange={(e) => setForm({ ...form, provider: e.target.value, isCustom: e.target.value === "custom" })} className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
             {providers.map((p) => <option key={p.id} value={p.id}>{p.icon} {p.name}</option>)}
           </select>
@@ -100,7 +163,7 @@ export function ApiKeyVaultPanel() {
           {form.isCustom && <input value={form.endpoint} onChange={(e) => setForm({ ...form, endpoint: e.target.value })} placeholder="Custom API endpoint URL (optional)" className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm md:col-span-2" />}
           <input type="number" value={form.priority} onChange={(e) => setForm({ ...form, priority: +e.target.value })} placeholder="Priority (higher = tried first)" className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm" />
           <button type="submit" className="rounded-xl bg-gradient-to-r from-orange-500 to-purple-600 px-4 py-3 text-sm font-semibold">+ Add & Test Key</button>
-        </form>
+        </form>}
       </div>
 
       {grouped.map((group) => (
@@ -115,8 +178,8 @@ export function ApiKeyVaultPanel() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium">{k.label}</p>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${k.status === "online" ? "bg-emerald-500/20 text-emerald-400" : k.status === "offline" ? "bg-red-500/20 text-red-400" : "bg-neutral-500/20 text-neutral-500"}`}>
-                        {k.status === "online" ? "● ONLINE" : k.status === "offline" ? "○ OFFLINE" : "? UNTESTED"}
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${k.status === "online" ? "bg-emerald-500/20 text-emerald-400" : k.status === "exhausted" ? "bg-amber-500/20 text-amber-400" : k.status === "offline" ? "bg-red-500/20 text-red-400" : "bg-neutral-500/20 text-neutral-500"}`}>
+                        {k.status === "online" ? "● ONLINE" : k.status === "exhausted" ? "⚡ EXHAUSTED" : k.status === "offline" ? "○ OFFLINE" : "? UNTESTED"}
                       </span>
                       {!k.isActive && <span className="text-[10px] text-neutral-600">(disabled)</span>}
                     </div>

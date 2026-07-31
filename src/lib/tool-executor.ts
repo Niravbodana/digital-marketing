@@ -1,7 +1,8 @@
-import { getConfig, getOpenAIClient, isFeatureEnabled } from "./config";
+import { chatComplete } from "./ai-router";
 import { generatePostContent } from "./ai";
 import { generateVoice, isVoiceEnabled } from "./voice";
 import { generateVideo, isVideoEnabled } from "./video";
+import { getConfig, getOpenAIClient } from "./config";
 import type { AgentTool } from "./tools";
 
 export type ToolOutput = {
@@ -17,20 +18,15 @@ export type ToolOutput = {
 };
 
 async function aiGenerate(system: string, user: string): Promise<string> {
-  const client = await getOpenAIClient();
-  if (client) {
-    const model = (await getConfig("openai_model")) || "gpt-4o-mini";
-    const res = await client.chat.completions.create({
-      model,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-      temperature: 0.8,
-    });
-    return res.choices[0]?.message?.content || "";
+  try {
+    const result = await chatComplete(
+      [{ role: "system", content: system }, { role: "user", content: user }],
+      { timeoutMs: 45000 }
+    );
+    return result.content;
+  } catch {
+    return `[Demo Output]\n\nRequest: ${user}\n\nAdd API key in Admin → API Key Vault (OpenAI, Groq, or Gemini). Key auto-detects and connects.\n\n---\nBodana Digital`;
   }
-  return `[AI Mock Output]\n\nGenerated content for: ${user}\n\nAdd OpenAI API key in Admin Panel → AI & Models for full generation.\n\n---\nBodana Digital Creation Engine`;
 }
 
 async function generateImage(prompt: string, title: string): Promise<string> {
@@ -47,7 +43,7 @@ async function generateImage(prompt: string, title: string): Promise<string> {
       const url = res.data?.[0]?.url;
       if (url) return url;
     } catch {
-      // fall through to placeholder
+      // placeholder fallback
     }
   }
   const seed = encodeURIComponent((title || prompt).slice(0, 20));
@@ -61,124 +57,86 @@ export async function executeTool(tool: AgentTool, userInput: string): Promise<T
   switch (tool.outputType) {
     case "image": {
       const promptDetail = await aiGenerate(
-        "You are an expert image prompt engineer. Write a detailed DALL-E/Midjourney style prompt. Return only the prompt, no explanation.",
+        "You are an expert image prompt engineer. Write a detailed image prompt. Return only the prompt.",
         fullPrompt
       );
       const imageUrl = await generateImage(promptDetail, tool.name);
       return {
-        type: "image",
-        title: tool.name,
-        content: promptDetail,
-        downloadName: `${tool.id}-prompt.txt`,
-        mimeType: "text/plain",
-        imageUrl,
-        metadata: { prompt: promptDetail },
+        type: "image", title: tool.name, content: promptDetail,
+        downloadName: `${tool.id}-prompt.txt`, mimeType: "text/plain",
+        imageUrl, metadata: { prompt: promptDetail },
       };
     }
     case "video": {
       const script = await aiGenerate(
-        "You are a video director. Write a complete video script with scenes, dialogue, camera directions, and timing. Use markdown format.",
+        "You are a video director. Write a complete video script with scenes and timing in markdown.",
         fullPrompt
       );
       let videoUrl = "";
       if (await isVideoEnabled()) {
-        const vid = await generateVideo(`${tool.name}: ${topic}. ${script.slice(0, 500)}`);
-        videoUrl = vid.videoUrl;
+        try {
+          const vid = await Promise.race([
+            generateVideo(`${tool.name}: ${topic}. ${script.slice(0, 300)}`),
+            new Promise<{ videoUrl: string }>((resolve) => setTimeout(() => resolve({ videoUrl: "" }), 20000)),
+          ]);
+          videoUrl = vid.videoUrl;
+        } catch { /* skip video, deliver script */ }
       }
       return {
-        type: "video",
-        title: tool.name,
-        content: script,
-        downloadName: `${tool.id}-script.md`,
-        mimeType: "text/markdown",
+        type: "video", title: tool.name, content: script,
+        downloadName: `${tool.id}-script.md`, mimeType: "text/markdown",
         imageUrl: videoUrl ? undefined : `https://picsum.photos/seed/v${Date.now()}/1920/1080`,
         videoUrl: videoUrl || undefined,
-        metadata: { format: videoUrl ? "mp4" : "script-only", duration: "60s", source: videoUrl ? "replicate" : "script" },
+        metadata: { format: videoUrl ? "mp4" : "script", source: videoUrl ? "replicate" : "ai-script" },
       };
     }
     case "audio": {
       const script = await aiGenerate(
-        "You are an audio producer. Write complete audio script with timing, voice direction, music cues, and sound effects notes. Keep narration under 200 words for TTS.",
+        "Write a short audio/voice script under 150 words for TTS.",
         fullPrompt
       );
       let audioUrl = "";
       if (await isVoiceEnabled()) {
-        const voice = await generateVoice(script.slice(0, 2000));
-        audioUrl = voice.audioUrl;
+        try {
+          const voice = await Promise.race([
+            generateVoice(script.slice(0, 1500)),
+            new Promise<{ audioUrl: string }>((resolve) => setTimeout(() => resolve({ audioUrl: "" }), 15000)),
+          ]);
+          audioUrl = voice.audioUrl;
+        } catch { /* deliver script only */ }
       }
       return {
-        type: "audio",
-        title: tool.name,
-        content: script,
-        downloadName: audioUrl ? `${tool.id}.mp3` : `${tool.id}-audio-script.md`,
+        type: "audio", title: tool.name, content: script,
+        downloadName: audioUrl ? `${tool.id}.mp3` : `${tool.id}-script.md`,
         mimeType: audioUrl ? "audio/mpeg" : "text/markdown",
         audioUrl: audioUrl || undefined,
-        metadata: { format: audioUrl ? "mp3" : "script-only", source: audioUrl ? "elevenlabs" : "script" },
+        metadata: { source: audioUrl ? "elevenlabs" : "script" },
       };
     }
     case "code": {
-      const code = await aiGenerate(
-        "You are an expert developer. Write clean, working code with comments. Return only code in markdown code blocks.",
-        fullPrompt
-      );
-      return {
-        type: "code",
-        title: tool.name,
-        content: code,
-        downloadName: `${tool.id}.md`,
-        mimeType: "text/markdown",
-      };
+      const code = await aiGenerate("Write clean working code with comments in markdown code blocks.", fullPrompt);
+      return { type: "code", title: tool.name, content: code, downloadName: `${tool.id}.md`, mimeType: "text/markdown" };
     }
     case "spreadsheet": {
-      const data = await aiGenerate(
-        "You are a data analyst. Create CSV-formatted spreadsheet data with headers and 10 rows of realistic sample data.",
-        fullPrompt
-      );
-      return {
-        type: "spreadsheet",
-        title: tool.name,
-        content: data,
-        downloadName: `${tool.id}.csv`,
-        mimeType: "text/csv",
-      };
+      const data = await aiGenerate("Create CSV data with headers and 10 rows.", fullPrompt);
+      return { type: "spreadsheet", title: tool.name, content: data, downloadName: `${tool.id}.csv`, mimeType: "text/csv" };
     }
     case "document": {
-      const doc = await aiGenerate(
-        "You are a professional document writer. Create a well-structured document with headings, bullet points, and professional formatting in markdown.",
-        fullPrompt
-      );
-      return {
-        type: "document",
-        title: tool.name,
-        content: doc,
-        downloadName: `${tool.id}-document.md`,
-        mimeType: "text/markdown",
-      };
+      const doc = await aiGenerate("Create a well-structured professional document in markdown.", fullPrompt);
+      return { type: "document", title: tool.name, content: doc, downloadName: `${tool.id}-doc.md`, mimeType: "text/markdown" };
     }
     default: {
       if (tool.studio === "social") {
         const { caption, hashtags } = await generatePostContent(topic);
         const imageUrl = await generateImage(caption, tool.name);
         return {
-          type: "text",
-          title: tool.name,
+          type: "text", title: tool.name,
           content: `${caption}\n\n${hashtags.map((h) => `#${h}`).join(" ")}`,
-          downloadName: `${tool.id}-post.txt`,
-          mimeType: "text/plain",
-          imageUrl,
+          downloadName: `${tool.id}-post.txt`, mimeType: "text/plain", imageUrl,
         };
       }
-      const text = await aiGenerate(
-        "You are a creative AI assistant. Generate high-quality, production-ready content.",
-        fullPrompt
-      );
-      return {
-        type: "text",
-        title: tool.name,
-        content: text,
-        downloadName: `${tool.id}.txt`,
-        mimeType: "text/plain",
-      };
+      const text = await aiGenerate("Generate high-quality production-ready content.", fullPrompt);
+      return { type: "text", title: tool.name, content: text, downloadName: `${tool.id}.txt`, mimeType: "text/plain" };
     }
   }
 }

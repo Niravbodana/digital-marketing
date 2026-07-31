@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { ensureDatabase } from "@/lib/db-init";
-import { getConfig, getOpenAIClient, deductCredits } from "@/lib/config";
+import { getConfig, deductCredits } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
+import { chatComplete, hasAnyLLMKey } from "@/lib/ai-router";
 
 export async function GET() {
   await ensureDatabase();
@@ -45,21 +46,19 @@ export async function POST(req: NextRequest) {
   const cost = parseInt(await getConfig("credit_cost_text")) || 1;
   try { await deductCredits(user.id, cost, "Chat message"); } catch { return NextResponse.json({ error: "Insufficient credits" }, { status: 402 }); }
 
-  const client = await getOpenAIClient();
-  let reply = `[AI Mock] I understand: "${message}". Add OPENAI_API_KEY in Admin Panel → AI & Models to enable full chat refine.`;
+  let reply = `[AI Mock] I understand: "${message}". Add API key in Admin → API Key Vault (OpenAI, Groq, or Gemini).`;
 
-  if (client) {
-    const model = await getConfig("openai_model");
-    const res = await client.chat.completions.create({
-      model: model || "gpt-4o-mini",
-      messages: [
+  if (await hasAnyLLMKey()) {
+    try {
+      const result = await chatComplete([
         { role: "system", content: "You are Bodana Digital AI assistant. Help refine, improve, and create marketing content. Be concise and actionable. If user asks to change something, apply the change directly." },
         ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
         { role: "user", content: message },
-      ],
-      temperature: 0.7,
-    });
-    reply = res.choices[0]?.message?.content || reply;
+      ], { timeoutMs: 60000 });
+      reply = result.content || reply;
+    } catch {
+      // keep mock reply
+    }
   }
 
   const assistantMsg = await prisma.message.create({

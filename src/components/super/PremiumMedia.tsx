@@ -1,12 +1,48 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 type ShowcaseItem = {
   id: string; type: string; title: string; subtitle?: string;
   mediaUrl: string; thumbnailUrl?: string; badge?: string; category: string;
 };
+
+function LazyVideo({ src, poster, className, autoPlay = false }: { src: string; poster?: string; className?: string; autoPlay?: boolean }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          if (autoPlay) el.play().catch(() => null);
+        } else if (autoPlay) {
+          el.pause();
+        }
+      },
+      { rootMargin: "100px" }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [autoPlay]);
+
+  return (
+    <video
+      ref={ref}
+      src={visible ? src : undefined}
+      poster={poster}
+      muted
+      loop={autoPlay}
+      playsInline
+      preload="none"
+      className={className}
+    />
+  );
+}
 
 export function MediaShowcase() {
   const [items, setItems] = useState<ShowcaseItem[]>([]);
@@ -30,11 +66,11 @@ export function MediaShowcase() {
         <div className="mt-12 grid gap-6 lg:grid-cols-2">
           <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-black shadow-2xl shadow-orange-500/10">
             {current ? (
-              <video
+              <LazyVideo
                 key={current.id}
                 src={current.mediaUrl}
                 poster={current.thumbnailUrl}
-                autoPlay muted loop playsInline
+                autoPlay
                 className="aspect-[9/16] w-full object-cover lg:aspect-video"
               />
             ) : (
@@ -57,7 +93,7 @@ export function MediaShowcase() {
                 className={`group relative overflow-hidden rounded-2xl border transition ${activeVideo === i ? "border-orange-500 ring-2 ring-orange-500/30" : "border-white/10 hover:border-white/20"}`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={v.thumbnailUrl || v.mediaUrl} alt={v.title} className="aspect-video w-full object-cover transition group-hover:scale-105" />
+                <img src={v.thumbnailUrl || v.mediaUrl} alt={v.title} loading="lazy" className="aspect-video w-full object-cover transition group-hover:scale-105" />
                 <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 transition group-hover:opacity-100">
                   <span className="rounded-full bg-white/20 px-3 py-1 text-xs backdrop-blur">▶ Play</span>
                 </div>
@@ -89,10 +125,10 @@ export function AdGallery() {
           {items.map((item) => (
             <div key={item.id} className="mb-4 break-inside-avoid overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] transition hover:border-orange-500/30 hover:shadow-lg hover:shadow-orange-500/10">
               {item.type === "video" ? (
-                <video src={item.mediaUrl} poster={item.thumbnailUrl} muted loop playsInline autoPlay className="w-full" />
+                <LazyVideo src={item.mediaUrl} poster={item.thumbnailUrl} className="w-full" />
               ) : (
                 /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={item.mediaUrl} alt={item.title} className="w-full" />
+                <img src={item.mediaUrl} alt={item.title} loading="lazy" className="w-full" />
               )}
               <div className="p-3">
                 {item.badge && <span className="text-[10px] text-orange-400">{item.badge}</span>}
@@ -128,7 +164,7 @@ export function TestimonialsSection() {
             <div key={t.id} className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent p-6">
               <div className="flex items-center gap-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={t.mediaUrl} alt={t.title} className="h-12 w-12 rounded-full object-cover ring-2 ring-orange-500/30" />
+                <img src={t.mediaUrl} alt={t.title} loading="lazy" className="h-12 w-12 rounded-full object-cover ring-2 ring-orange-500/30" />
                 <div>
                   <p className="font-semibold">{t.title}</p>
                   <div className="flex text-yellow-400 text-xs">★★★★★</div>

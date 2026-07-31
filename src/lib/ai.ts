@@ -1,6 +1,5 @@
-import OpenAI from "openai";
 import { z } from "zod";
-import { getConfig, getOpenAIClient } from "./config";
+import { chatComplete, hasAnyLLMKey } from "./ai-router";
 
 const TaskIntentSchema = z.object({
   action: z.enum([
@@ -23,35 +22,22 @@ const TaskIntentSchema = z.object({
 
 export type TaskIntent = z.infer<typeof TaskIntentSchema>;
 
-function getClient() {
-  return null; // use getOpenAIClient async instead
-}
-
 export async function hasAiConfigured() {
-  const key = await getConfig("openai_api_key");
-  return !!key && !key.startsWith("sk-your");
+  return hasAnyLLMKey();
 }
 
 export async function parsePrompt(prompt: string): Promise<TaskIntent> {
-  const client = await getOpenAIClient();
-
   const systemPrompt = `You are Bodana Digital AI assistant. Parse user marketing prompts into structured actions.
 Return JSON only with: action, title, caption (optional), hashtags (array, optional), topic, tone, scheduleHint, reply (friendly confirmation message in same language as user).
 Actions: generate_post, schedule_post, connect_instagram, list_accounts, publish_post, generate_hashtags, general`;
 
-  if (client) {
+  if (await hasAnyLLMKey()) {
     try {
-      const res = await client.chat.completions.create({
-        model: (await getConfig("openai_model")) || "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: prompt },
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.7,
-      });
-      const raw = res.choices[0]?.message?.content || "{}";
-      const parsed = JSON.parse(raw);
+      const result = await chatComplete([
+        { role: "system", content: systemPrompt },
+        { role: "user", content: prompt },
+      ], { timeoutMs: 30000 });
+      const parsed = JSON.parse(result.content || "{}");
       return TaskIntentSchema.parse(parsed);
     } catch {
       // fall through to rule-based
@@ -106,26 +92,24 @@ function ruleBasedParse(prompt: string): TaskIntent {
 }
 
 export async function generatePostContent(topic: string, tone = "engaging") {
-  const client = await getOpenAIClient();
-
-  if (client) {
-    const res = await client.chat.completions.create({
-      model: (await getConfig("openai_model")) || "gpt-4o-mini",
-      messages: [
+  if (await hasAnyLLMKey()) {
+    try {
+      const result = await chatComplete([
         {
           role: "system",
           content:
             "Generate Instagram post content. Return JSON: { caption: string (max 2200 chars, include emojis), hashtags: string[] (15-20 relevant tags without #) }",
         },
         { role: "user", content: `Topic: ${topic}\nTone: ${tone}` },
-      ],
-      response_format: { type: "json_object" },
-    });
-    const raw = JSON.parse(res.choices[0]?.message?.content || "{}");
-    return {
-      caption: String(raw.caption || ""),
-      hashtags: (raw.hashtags as string[]) || [],
-    };
+      ], { timeoutMs: 45000 });
+      const raw = JSON.parse(result.content || "{}");
+      return {
+        caption: String(raw.caption || ""),
+        hashtags: (raw.hashtags as string[]) || [],
+      };
+    } catch {
+      // fallback
+    }
   }
 
   return mockGenerate(topic);

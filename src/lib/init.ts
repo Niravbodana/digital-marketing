@@ -48,7 +48,11 @@ const DEFAULT_PROMOS = [
   { code: "VIP500", description: "500 bonus credits for VIP", discountType: "bonus_credits", discountValue: 0, bonusCredits: 500, maxUses: 50 },
 ];
 
+let initDone = false;
+
 export async function initializeApp() {
+  if (initDone) return;
+  initDone = true;
   await seedConfig();
 
   const pkgCount = await prisma.creditPackage.count();
