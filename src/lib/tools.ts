@@ -126,6 +126,27 @@ const socialTools = toolsForCategory("social", "Social", [
   { name: "Engagement Reply", icon: "💬", desc: "Comment responses", type: "text", prompt: "Engagement replies for:" },
 ]);
 
+const makerTools = toolsForCategory("maker", "Make Anything", [
+  { name: "Movie Trailer", icon: "🎬", desc: "Cinematic trailer with score & edit", type: "video", prompt: "Create a cinematic movie trailer for:" },
+  { name: "Business Book", icon: "📖", desc: "Full manuscript with chapters", type: "document", prompt: "Write a complete business book about:" },
+  { name: "Mobile App", icon: "📱", desc: "Working app with backend", type: "code", prompt: "Build a mobile app concept and code for:" },
+  { name: "Hit Song", icon: "🎵", desc: "Original track with vocals", type: "audio", prompt: "Compose and produce a hit song about:" },
+  { name: "Website Builder", icon: "🌐", desc: "Live-ready website", type: "code", prompt: "Build a complete website for:" },
+  { name: "PowerPoint Deck", icon: "📊", desc: "Designed presentation", type: "document", prompt: "Create a winning PowerPoint deck for:" },
+  { name: "Audiobook", icon: "🎧", desc: "Narrated audiobook chapter", type: "audio", prompt: "Write and narrate an audiobook chapter about:" },
+  { name: "TV Show Pilot", icon: "📺", desc: "Full pilot episode script", type: "video", prompt: "Write a TV show pilot episode for:" },
+  { name: "Commercial Spot", icon: "📣", desc: "30-sec agency-quality ad", type: "video", prompt: "Create a 30-second commercial for:" },
+  { name: "Novel Manuscript", icon: "✍️", desc: "Full novel with chapters", type: "document", prompt: "Write a novel manuscript about:" },
+  { name: "Family Movie", icon: "👨‍👩‍👧", desc: "Edited family film with score", type: "video", prompt: "Create a family movie concept for:" },
+  { name: "AI Photography", icon: "📷", desc: "Portfolio-grade photos", type: "image", prompt: "Generate professional photography of:" },
+  { name: "Visual Art", icon: "🎨", desc: "Paintings & illustrations", type: "image", prompt: "Create visual art in any style for:" },
+  { name: "AI Spokesperson", icon: "🗣️", desc: "Talking head with your voice", type: "video", prompt: "Create AI spokesperson video script for:" },
+  { name: "Autonomous Agent", icon: "🤖", desc: "Set-and-forget content agent", type: "document", prompt: "Design an autonomous content agent workflow for:" },
+  { name: "Graphic Ad Campaign", icon: "🎯", desc: "Thumb-stopping ad creatives", type: "image", prompt: "Design a graphic ad campaign for:" },
+  { name: "Sales Funnel Site", icon: "🔽", desc: "High-converting funnel", type: "code", prompt: "Build a sales funnel website for:" },
+  { name: "Podcast Episode", icon: "🎙️", desc: "Full episode with intro/outro", type: "audio", prompt: "Create a complete podcast episode about:" },
+]);
+
 export const AGENT_TOOLS: AgentTool[] = [
   ...creatorTools,
   ...marketingTools,
@@ -135,6 +156,7 @@ export const AGENT_TOOLS: AgentTool[] = [
   ...codeTools,
   ...researchTools,
   ...socialTools,
+  ...makerTools,
 ];
 
 export const TOOL_CATEGORIES = [...new Set(AGENT_TOOLS.map((t) => t.category))];

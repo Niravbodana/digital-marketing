@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   if (!tool) return NextResponse.json({ error: "Tool not found" }, { status: 404 });
 
   const userInput = input || prompt || "";
-  const costType = tool.outputType === "image" ? "image" : tool.outputType === "video" ? "video" : "text";
+  const costType = tool.outputType === "image" ? "image" : tool.outputType === "video" ? "video" : tool.outputType === "audio" ? "audio" : "text";
   const cost = await getCreditCost(costType);
 
   try {

@@ -37,6 +37,8 @@ const CATEGORIES = [
   { id: "storage", name: "Storage", icon: "☁️", desc: "S3, R2, CDN" },
   { id: "features", name: "Features", icon: "🚩", desc: "Feature flags" },
   { id: "packages", name: "Credit Packages", icon: "💎", desc: "Pricing plans" },
+  { id: "promos", name: "Promo Codes", icon: "🎟️", desc: "Discounts & offers" },
+  { id: "subscriptions", name: "Subscriptions", icon: "📋", desc: "Monthly/yearly plans" },
 ];
 
 const TEST_SERVICES = [
@@ -59,6 +61,9 @@ export default function AdminPage() {
   const [saving, setSaving] = useState(false);
   const [testStatus, setTestStatus] = useState<Record<string, string>>({});
   const [pkgForm, setPkgForm] = useState({ name: "", credits: 100, priceInr: 99 });
+  const [promos, setPromos] = useState<Array<{ id: string; code: string; description?: string; discountType: string; discountValue: number; bonusCredits: number; usedCount: number; maxUses: number; active: boolean }>>([]);
+  const [promoForm, setPromoForm] = useState({ code: "", description: "", discountType: "percent", discountValue: 10, bonusCredits: 0, maxUses: 100 });
+  const [plans, setPlans] = useState<Array<{ id: string; name: string; priceInr: number; creditsPerMonth: number; billingPeriod: string; popular: boolean }>>([]);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/admin/config?secrets=${showSecrets ? "1" : "0"}`);
@@ -81,6 +86,15 @@ export default function AdminPage() {
   }, [router]);
 
   useEffect(() => { if (user) load(); }, [user, load]);
+
+  useEffect(() => {
+    if (tab === "promos" && user) {
+      fetch("/api/admin/promos").then((r) => r.json()).then((d) => setPromos(d.promos || []));
+    }
+    if (tab === "subscriptions" && user) {
+      fetch("/api/admin/plans").then((r) => r.json()).then((d) => setPlans(d.plans || []));
+    }
+  }, [tab, user]);
 
   async function saveCategory() {
     setSaving(true);
@@ -129,6 +143,18 @@ export default function AdminPage() {
   async function deletePackage(id: string) {
     await fetch("/api/admin/packages", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
     load();
+  }
+
+  async function addPromo(e: React.FormEvent) {
+    e.preventDefault();
+    await fetch("/api/admin/promos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(promoForm) });
+    setPromoForm({ code: "", description: "", discountType: "percent", discountValue: 10, bonusCredits: 0, maxUses: 100 });
+    fetch("/api/admin/promos").then((r) => r.json()).then((d) => setPromos(d.promos || []));
+  }
+
+  async function deletePromo(id: string) {
+    await fetch("/api/admin/promos", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    fetch("/api/admin/promos").then((r) => r.json()).then((d) => setPromos(d.promos || []));
   }
 
   const categoryConfigs = configs.filter((c) => c.category === tab);
@@ -228,6 +254,48 @@ export default function AdminPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          ) : tab === "promos" ? (
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent p-6">
+                <h2 className="text-lg font-semibold">Promo Codes & Offers</h2>
+                <form onSubmit={addPromo} className="mt-4 grid gap-3 md:grid-cols-3">
+                  <input value={promoForm.code} onChange={(e) => setPromoForm({ ...promoForm, code: e.target.value })} placeholder="CODE" required className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-mono uppercase" />
+                  <input value={promoForm.description} onChange={(e) => setPromoForm({ ...promoForm, description: e.target.value })} placeholder="Description" className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm" />
+                  <select value={promoForm.discountType} onChange={(e) => setPromoForm({ ...promoForm, discountType: e.target.value })} className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
+                    <option value="percent">Percent off</option>
+                    <option value="fixed">Fixed ₹ off</option>
+                    <option value="bonus_credits">Bonus credits</option>
+                  </select>
+                  <input type="number" value={promoForm.discountValue} onChange={(e) => setPromoForm({ ...promoForm, discountValue: +e.target.value })} placeholder="Discount value" className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm" />
+                  <input type="number" value={promoForm.bonusCredits} onChange={(e) => setPromoForm({ ...promoForm, bonusCredits: +e.target.value })} placeholder="Bonus credits" className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm" />
+                  <button type="submit" className="rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold">+ Create Promo</button>
+                </form>
+              </div>
+              <div className="space-y-3">
+                {promos.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-5 py-4">
+                    <div>
+                      <p className="font-mono font-bold text-orange-400">{p.code}</p>
+                      <p className="text-sm text-neutral-500">{p.description} · {p.discountType} {p.discountValue}{p.bonusCredits ? ` +${p.bonusCredits} credits` : ""}</p>
+                      <p className="text-xs text-neutral-600">Used {p.usedCount}{p.maxUses ? `/${p.maxUses}` : ""} times</p>
+                    </div>
+                    <button onClick={() => deletePromo(p.id)} className="rounded-lg border border-red-500/30 px-3 py-1.5 text-xs text-red-400">Delete</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : tab === "subscriptions" ? (
+            <div className="space-y-3">
+              <p className="text-sm text-neutral-500">Subscription plans shown on /pricing page. Seeded on first run.</p>
+              {plans.map((p) => (
+                <div key={p.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-5 py-4">
+                  <div>
+                    <p className="font-semibold">{p.name} {p.popular && <span className="text-xs text-orange-400">Popular</span>}</p>
+                    <p className="text-sm text-neutral-500">₹{p.priceInr}/{p.billingPeriod} · {p.creditsPerMonth} credits/mo</p>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent p-6">

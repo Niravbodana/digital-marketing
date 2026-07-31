@@ -73,13 +73,58 @@ model CreditTransaction {
 }
 
 model CreditPackage {
-  id        String   @id @default(cuid())
-  name      String
-  credits   Int
-  priceInr  Int
-  active    Boolean  @default(true)
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
+  id               String   @id @default(cuid())
+  name             String
+  credits          Int
+  priceInr         Int
+  originalPriceInr Int?
+  badge            String?
+  features         String?
+  billingPeriod    String   @default("one-time")
+  highlight        Boolean  @default(false)
+  active           Boolean  @default(true)
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+}
+
+model SubscriptionPlan {
+  id               String   @id @default(cuid())
+  name             String
+  slug             String   @unique
+  priceInr         Int
+  originalPriceInr Int?
+  creditsPerMonth  Int
+  billingPeriod    String   @default("monthly")
+  badge            String?
+  features         String?
+  popular          Boolean  @default(false)
+  active           Boolean  @default(true)
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+}
+
+model PromoCode {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  description   String?
+  discountType  String   @default("percent")
+  discountValue Int      @default(0)
+  bonusCredits  Int      @default(0)
+  maxUses       Int      @default(0)
+  usedCount     Int      @default(0)
+  minPurchase   Int      @default(0)
+  expiresAt     DateTime?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  redemptions   PromoRedemption[]
+}
+
+model PromoRedemption {
+  id        String    @id @default(cuid())
+  userId    String
+  promoId   String
+  promo     PromoCode @relation(fields: [promoId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
 }
 
 model Team {

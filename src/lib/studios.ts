@@ -15,6 +15,7 @@ export const STUDIOS: Studio[] = [
   { id: "code", name: "Code Studio", icon: "💻", description: "Scripts, automation, apps", color: "from-green-500 to-emerald-500" },
   { id: "research", name: "Research Studio", icon: "🔬", description: "Web research, analysis, reports", color: "from-indigo-500 to-blue-500" },
   { id: "social", name: "Social Studio", icon: "📱", description: "Instagram, TikTok, LinkedIn", color: "from-pink-500 to-rose-500" },
+  { id: "maker", name: "Make Anything", icon: "⚡", description: "Movies, books, apps, songs — one prompt", color: "from-yellow-500 to-orange-600" },
 ];
 
 export type VideoTemplate = {
@@ -33,11 +34,14 @@ export const VIDEO_TEMPLATES: VideoTemplate[] = [
   { id: "reel", name: "Instagram Reel", tag: "Social", description: "9:16 vertical with hooks under 1 second" },
   { id: "testimonial", name: "Talking Head", tag: "Ads", description: "Testimonial-style talking head videos" },
   { id: "product", name: "Product Demo", tag: "E-commerce", description: "Product showcase with lifestyle shots" },
-  { id: "brainrot", name: "Viral Short", tag: "Gen Z", description: "Fast-paced meme-format viral content" },
+  { id: "commercial", name: "Commercial Spot", tag: "Ads", description: "30-second agency-quality commercial" },
+  { id: "audiobook", name: "Audiobook", tag: "Audio", description: "Narrated chapter with voice generation" },
+  { id: "movie", name: "Movie Trailer", tag: "Cinema", description: "Cinematic trailer with score and edit", popular: true },
 ];
 
 export const FORMAT_PILLS = [
-  "Word docs", "Music tracks", "Videos", "AI images", "Spreadsheets",
-  "Code & scripts", "Voice narration", "PDF reports", "Logos & graphics",
-  "Research reports", "Pitch decks", "Instagram posts", "UGC ads", "Landing pages",
+  "Movie trailers", "Business books", "Mobile apps", "Hit songs", "Websites",
+  "PowerPoint decks", "Audiobooks", "TV pilots", "Commercials", "Novels",
+  "Word docs", "Music tracks", "Videos", "AI images", "Voice narration",
+  "UGC ads", "Pitch decks", "Instagram posts", "Graphic ads", "Family movies",
 ];

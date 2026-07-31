@@ -25,11 +25,21 @@ export function OutputPanel({ outputs }: { outputs: ToolOutput[] }) {
             <div className="relative aspect-video bg-neutral-900">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={o.imageUrl} alt={o.title} className="h-full w-full object-cover" />
-              {o.type === "video" && (
+              {o.type === "video" && !o.videoUrl && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40">
                   <span className="rounded-full bg-white/20 px-4 py-2 text-sm backdrop-blur">▶ Video Script Ready</span>
                 </div>
               )}
+            </div>
+          )}
+          {o.videoUrl && (
+            <div className="aspect-video bg-black">
+              <video src={o.videoUrl} controls className="h-full w-full" />
+            </div>
+          )}
+          {o.audioUrl && (
+            <div className="border-b border-white/5 bg-neutral-900 p-4">
+              <audio src={o.audioUrl} controls className="w-full" />
             </div>
           )}
           <div className="p-4">

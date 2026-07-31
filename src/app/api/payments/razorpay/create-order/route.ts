@@ -14,20 +14,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Razorpay not configured in Admin Panel" }, { status: 400 });
   }
 
-  const { packageId } = await req.json();
+  const { packageId, promoCode } = await req.json();
   const { prisma } = await import("@/lib/prisma");
   const pkg = await prisma.creditPackage.findUnique({ where: { id: packageId } });
   if (!pkg) return NextResponse.json({ error: "Package not found" }, { status: 404 });
+
+  let amount = pkg.priceInr;
+  let promoId: string | undefined;
+  if (promoCode) {
+    const { applyPromoToOrder } = await import("@/lib/promo");
+    try {
+      const applied = await applyPromoToOrder(promoCode, user.id, amount);
+      amount = applied.finalAmount;
+      promoId = applied.promoId;
+    } catch (e) {
+      return NextResponse.json({ error: e instanceof Error ? e.message : "Invalid promo" }, { status: 400 });
+    }
+  }
 
   const Razorpay = (await import("razorpay")).default;
   const rzp = new Razorpay({ key_id: keyId, key_secret: keySecret });
 
   const order = await rzp.orders.create({
-    amount: pkg.priceInr * 100,
+    amount: amount * 100,
     currency: "INR",
     receipt: `credits_${user.id}_${Date.now()}`,
-    notes: { userId: user.id, packageId: pkg.id, credits: String(pkg.credits) },
+    notes: { userId: user.id, packageId: pkg.id, credits: String(pkg.credits), promoId: promoId || "" },
   });
 
-  return NextResponse.json({ orderId: order.id, amount: pkg.priceInr, credits: pkg.credits, keyId });
+  return NextResponse.json({ orderId: order.id, amount, originalAmount: pkg.priceInr, credits: pkg.credits, keyId, promoApplied: !!promoId });
 }

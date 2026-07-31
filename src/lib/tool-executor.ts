@@ -1,5 +1,7 @@
-import { getConfig, getOpenAIClient } from "./config";
+import { getConfig, getOpenAIClient, isFeatureEnabled } from "./config";
 import { generatePostContent } from "./ai";
+import { generateVoice, isVoiceEnabled } from "./voice";
+import { generateVideo, isVideoEnabled } from "./video";
 import type { AgentTool } from "./tools";
 
 export type ToolOutput = {
@@ -9,6 +11,8 @@ export type ToolOutput = {
   downloadName: string;
   mimeType: string;
   imageUrl?: string;
+  audioUrl?: string;
+  videoUrl?: string;
   metadata?: Record<string, string>;
 };
 
@@ -76,28 +80,40 @@ export async function executeTool(tool: AgentTool, userInput: string): Promise<T
         "You are a video director. Write a complete video script with scenes, dialogue, camera directions, and timing. Use markdown format.",
         fullPrompt
       );
+      let videoUrl = "";
+      if (await isVideoEnabled()) {
+        const vid = await generateVideo(`${tool.name}: ${topic}. ${script.slice(0, 500)}`);
+        videoUrl = vid.videoUrl;
+      }
       return {
         type: "video",
         title: tool.name,
         content: script,
         downloadName: `${tool.id}-script.md`,
         mimeType: "text/markdown",
-        imageUrl: `https://picsum.photos/seed/v${Date.now()}/1920/1080`,
-        metadata: { format: "mp4-ready", duration: "60s" },
+        imageUrl: videoUrl ? undefined : `https://picsum.photos/seed/v${Date.now()}/1920/1080`,
+        videoUrl: videoUrl || undefined,
+        metadata: { format: videoUrl ? "mp4" : "script-only", duration: "60s", source: videoUrl ? "replicate" : "script" },
       };
     }
     case "audio": {
       const script = await aiGenerate(
-        "You are an audio producer. Write complete audio script with timing, voice direction, music cues, and sound effects notes.",
+        "You are an audio producer. Write complete audio script with timing, voice direction, music cues, and sound effects notes. Keep narration under 200 words for TTS.",
         fullPrompt
       );
+      let audioUrl = "";
+      if (await isVoiceEnabled()) {
+        const voice = await generateVoice(script.slice(0, 2000));
+        audioUrl = voice.audioUrl;
+      }
       return {
         type: "audio",
         title: tool.name,
         content: script,
-        downloadName: `${tool.id}-audio-script.md`,
-        mimeType: "text/markdown",
-        metadata: { format: "mp3-ready" },
+        downloadName: audioUrl ? `${tool.id}.mp3` : `${tool.id}-audio-script.md`,
+        mimeType: audioUrl ? "audio/mpeg" : "text/markdown",
+        audioUrl: audioUrl || undefined,
+        metadata: { format: audioUrl ? "mp3" : "script-only", source: audioUrl ? "elevenlabs" : "script" },
       };
     }
     case "code": {

@@ -36,6 +36,8 @@ export const CONFIG_REGISTRY: ConfigDef[] = [
   { key: "credit_cost_text", category: "ai", label: "Credits per text gen", defaultValue: "1", type: "number", sortOrder: 6 },
   { key: "credit_cost_image", category: "ai", label: "Credits per image", defaultValue: "5", type: "number", sortOrder: 7 },
   { key: "credit_cost_video", category: "ai", label: "Credits per video", defaultValue: "20", type: "number", sortOrder: 8 },
+  { key: "credit_cost_audio", category: "ai", label: "Credits per audio/voice", defaultValue: "8", type: "number", sortOrder: 9 },
+  { key: "replicate_video_model", category: "ai", label: "Replicate Video Model", defaultValue: "minimax/video-01", type: "text", sortOrder: 10 },
 
   // Razorpay
   { key: "razorpay_key_id", category: "payments", label: "Razorpay Key ID", type: "secret", isSecret: true, sortOrder: 1 },
@@ -151,6 +153,11 @@ export const CONFIG_CATEGORIES = [
   { id: "storage", name: "Storage & CDN", icon: "☁️" },
   { id: "features", name: "Feature Flags", icon: "🚩" },
 ];
+
+export async function isFeatureEnabled(key: string): Promise<boolean> {
+  const val = await getConfig(key);
+  return val === "true";
+}
 
 export async function getOpenAIClient() {
   const OpenAI = (await import("openai")).default;

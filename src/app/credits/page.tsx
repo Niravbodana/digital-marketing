@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-type Package = { id: string; name: string; credits: number; priceInr: number };
+type Package = { id: string; name: string; credits: number; priceInr: number; originalPriceInr?: number; badge?: string };
 type Transaction = { id: string; amount: number; type: string; description: string | null; createdAt: string };
 
 declare global {
@@ -19,8 +19,12 @@ export default function CreditsPage() {
   const [packages, setPackages] = useState<Package[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoMsg, setPromoMsg] = useState("");
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("promo")) setPromoCode(params.get("promo")!.toUpperCase());
     Promise.all([
       fetch("/api/auth/session").then((r) => r.json()),
       fetch("/api/packages").then((r) => r.json()),
@@ -38,6 +42,22 @@ export default function CreditsPage() {
     return () => { document.body.removeChild(script); };
   }, [router]);
 
+  async function redeemPromo() {
+    if (!promoCode.trim()) return;
+    const res = await fetch("/api/promo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: promoCode }),
+    });
+    const data = await res.json();
+    setPromoMsg(data.message || data.error);
+    if (data.valid) {
+      const updated = await fetch("/api/credits").then((r) => r.json());
+      setUser((u) => u ? { ...u, credits: updated.credits } : u);
+      setTransactions(updated.transactions || []);
+    }
+  }
+
   async function buy(pkg: Package) {
     if (!user) return;
     setLoading(pkg.id);
@@ -45,7 +65,7 @@ export default function CreditsPage() {
     const orderRes = await fetch("/api/payments/razorpay/create-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ packageId: pkg.id }),
+      body: JSON.stringify({ packageId: pkg.id, promoCode: promoCode || undefined }),
     });
     const orderData = await orderRes.json();
     if (!orderRes.ok) { alert(orderData.error || "Payment not available"); setLoading(null); return; }
@@ -98,12 +118,24 @@ export default function CreditsPage() {
           <p className="mt-2 text-xs text-neutral-500">Credits power AI generation, images, and chat refine</p>
         </div>
 
+        <div className="rounded-2xl border border-purple-500/30 bg-purple-500/10 p-6">
+          <h2 className="text-sm font-semibold">🎟️ Promo Code</h2>
+          <div className="mt-3 flex gap-2">
+            <input value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())} placeholder="WELCOME50, BODANA100..." className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-mono" />
+            <button onClick={redeemPromo} className="rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold">Redeem</button>
+          </div>
+          {promoMsg && <p className="mt-2 text-xs text-emerald-400">{promoMsg}</p>}
+          <p className="mt-2 text-[10px] text-neutral-600">Try: WELCOME50 (50% off) · BODANA100 (free credits) · LAUNCH25 · VIP500</p>
+        </div>
+
         <div>
           <h2 className="mb-4 text-lg font-semibold">Buy Credits</h2>
           <div className="grid gap-4 md:grid-cols-2">
             {packages.map((p) => (
               <div key={p.id} className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 hover:border-orange-500/30 transition">
+                {p.badge && <span className="text-xs text-orange-400">{p.badge}</span>}
                 <h3 className="text-xl font-bold">{p.name}</h3>
+                {p.originalPriceInr && <p className="text-sm text-neutral-600 line-through">₹{p.originalPriceInr}</p>}
                 <p className="mt-1 text-3xl font-bold text-orange-400">{p.credits} <span className="text-sm text-neutral-500">credits</span></p>
                 <p className="mt-2 text-lg">₹{p.priceInr}</p>
                 <button

@@ -11,8 +11,8 @@ export async function getDefaultSignupCredits(): Promise<number> {
   return parseInt(val || "100", 10) || 100;
 }
 
-export async function getCreditCost(type: "text" | "image" | "video"): Promise<number> {
-  const key = type === "text" ? "credit_cost_text" : type === "image" ? "credit_cost_image" : "credit_cost_video";
+export async function getCreditCost(type: "text" | "image" | "video" | "audio"): Promise<number> {
+  const key = type === "text" ? "credit_cost_text" : type === "image" ? "credit_cost_image" : type === "video" ? "credit_cost_video" : "credit_cost_audio";
   const val = await getConfig(key);
   return parseInt(val || "1", 10) || 1;
 }
