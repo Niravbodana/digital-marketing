@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { FORMAT_PILLS, VIDEO_TEMPLATES } from "@/lib/studios";
+import { FORMAT_PILLS, VIDEO_TEMPLATES, STUDIOS } from "@/lib/studios";
+import { BRAND } from "@/lib/brand";
 
 const DELIVERABLES = [
   { icon: "🎬", title: "Make a Movie", desc: "Script, storyboard, footage, score, and final cut." },
@@ -66,7 +67,7 @@ export function DeliverablesSection() {
     <section className="border-t border-white/5 py-24">
       <div className="mx-auto max-w-6xl px-6">
         <h2 className="text-center text-3xl font-bold">Tired of AI Slop?</h2>
-        <p className="mx-auto mt-4 max-w-xl text-center text-neutral-500">SuperCool-style deliverables — world-class, in one place.</p>
+        <p className="mx-auto mt-4 max-w-xl text-center text-neutral-500">{BRAND.product} deliverables — world-class, in one place.</p>
         <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {DELIVERABLES.map((d) => (
             <Link key={d.title} href="/studio" className="group rounded-2xl border border-white/10 bg-white/[0.02] p-6 transition hover:border-orange-500/30 hover:bg-orange-500/5">
@@ -97,7 +98,7 @@ export function ComparisonSection() {
                 <th className="px-3 py-3">Gemini</th>
                 <th className="px-3 py-3">Midjourney</th>
                 <th className="px-3 py-3">Runway</th>
-                <th className="px-3 py-3 text-orange-400">Bodana</th>
+                <th className="px-3 py-3 text-orange-400">{BRAND.product}</th>
               </tr>
             </thead>
             <tbody>
@@ -120,27 +121,18 @@ export function ComparisonSection() {
 }
 
 export function StudiosSection() {
-  const studios = [
-    { name: "Creator Studio", desc: "Images, logos, photography with DALL-E.", icon: "🎨", href: "/studio" },
-    { name: "Marketing Studio", desc: "UGC ads, commercials, viral shorts.", icon: "📣", href: "/studio" },
-    { name: "Document Studio", desc: "Books, decks, PDFs — formatted & ready.", icon: "📄", href: "/studio" },
-    { name: "Audio Studio", desc: "Songs, voiceovers, podcasts — real MP3.", icon: "🎵", href: "/studio" },
-    { name: "Video Studio", desc: "Trailers, reels, commercials — real video.", icon: "🎬", href: "/studio" },
-    { name: "Make Anything", desc: "Movies, apps, novels — one prompt.", icon: "⚡", href: "/studio" },
-  ];
-
   return (
     <section className="border-t border-white/5 py-24">
       <div className="mx-auto max-w-6xl px-6">
         <h2 className="text-center text-3xl font-bold md:text-4xl">AI agents create real content.<br /><span className="text-neutral-500">In minutes.</span></h2>
         <p className="mx-auto mt-4 max-w-xl text-center text-neutral-500">Not text responses. Actual files you can download, edit, and ship.</p>
         <div className="mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {studios.map((s) => (
-            <Link key={s.name} href={s.href} className="group rounded-2xl border border-white/10 bg-white/[0.02] p-8 transition hover:border-orange-500/30 hover:bg-orange-500/5">
-              <span className="text-4xl">{s.icon}</span>
-              <h3 className="mt-4 text-xl font-bold group-hover:text-orange-300">{s.name}</h3>
-              <p className="mt-2 text-neutral-500">{s.desc}</p>
-              <span className="mt-4 inline-block text-sm text-orange-400">Open Studio →</span>
+          {STUDIOS.map((s) => (
+            <Link key={s.id} href="/studio" className="group rounded-2xl border border-white/10 bg-white/[0.02] p-8 transition hover:border-orange-500/30 hover:bg-orange-500/5">
+              <div className={`mb-4 h-1 w-12 rounded-full bg-gradient-to-r ${s.color}`} />
+              <h3 className="text-xl font-bold group-hover:text-orange-300">{s.name}</h3>
+              <p className="mt-2 text-neutral-500">{s.description}</p>
+              <span className="mt-4 inline-block text-sm text-orange-400">Open Creation Machine →</span>
             </Link>
           ))}
         </div>
@@ -221,7 +213,7 @@ export function SuperFooter() {
           <Link href="/studio" className="hover:text-white">Studio</Link>
           <Link href="/admin" className="hover:text-white">Admin</Link>
         </div>
-        <p className="mt-8 text-xs text-neutral-600">© {new Date().getFullYear()} Bodana Digital · You own everything created</p>
+        <p className="mt-8 text-xs text-neutral-600">© {new Date().getFullYear()} {BRAND.name} · You own everything you create</p>
       </div>
     </footer>
   );

@@ -1,5 +1,5 @@
 import { SiteNav } from "@/components/super/SiteNav";
-import { DeliverablesSection, ComparisonSection, HowItWorks, PricingCTA, SuperFooter } from "@/components/super/SuperSections";
+import { DeliverablesSection, ComparisonSection, HowItWorks, PricingCTA, SuperFooter, StudiosSection, TemplatesSection } from "@/components/super/SuperSections";
 import { RotatingHero } from "@/components/super/RotatingHero";
 import { MediaShowcase, AdGallery, TestimonialsSection, StatsTicker, StickyCTA, UrgencyBanner } from "@/components/super/PremiumMedia";
 
@@ -11,12 +11,14 @@ export default function Home() {
       <main>
         <RotatingHero />
         <StatsTicker />
-        <MediaShowcase />
         <DeliverablesSection />
-        <AdGallery />
+        <StudiosSection />
+        <TemplatesSection />
+        <MediaShowcase />
         <ComparisonSection />
-        <TestimonialsSection />
         <HowItWorks />
+        <AdGallery />
+        <TestimonialsSection />
         <PricingCTA />
       </main>
       <SuperFooter />

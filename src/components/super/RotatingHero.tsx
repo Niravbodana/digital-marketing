@@ -2,15 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { SiteNav } from "./SiteNav";
-
-const WORDS = ["a movie trailer", "a business book", "a mobile app", "a hit song", "a website", "a PowerPoint", "an audiobook", "a commercial", "a novel", "anything"];
+import { ROTATING_DELIVERABLES, BRAND } from "@/lib/brand";
 
 export function RotatingHero() {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    const t = setInterval(() => setIndex((i) => (i + 1) % WORDS.length), 2500);
+    const t = setInterval(() => setIndex((i) => (i + 1) % ROTATING_DELIVERABLES.length), 2500);
     return () => clearInterval(t);
   }, []);
 
@@ -31,14 +29,14 @@ export function RotatingHero() {
           Type one sentence.<br />
           Get{" "}
           <span className="gradient-text inline-block min-w-[280px] transition-all duration-500 md:min-w-[400px]">
-            {WORDS[index]}
+            {ROTATING_DELIVERABLES[index]}
           </span>
           <br />
           <span className="text-neutral-500">In minutes.</span>
         </h1>
 
         <p className="mx-auto mt-6 max-w-2xl text-lg text-neutral-400">
-          No duct-taping apps. No generic AI slop. Bodana builds finished movies, songs, websites, ads, and documents — ready to ship.
+          {BRAND.subtagline} Finished movies, songs, websites, ads, and documents — ready to ship.
         </p>
 
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">

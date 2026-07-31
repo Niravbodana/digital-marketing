@@ -7,8 +7,24 @@ import { executeTool } from "@/lib/tool-executor";
 import { pickToolWithAI } from "@/lib/agent";
 import { getCreditCost } from "@/lib/credits";
 import { deductCredits, addCredits } from "@/lib/config";
+import { chatComplete } from "@/lib/ai-router";
 
 export const maxDuration = 120;
+
+async function gatherContext(prompt: string): Promise<string> {
+  try {
+    const result = await chatComplete([
+      {
+        role: "system",
+        content: "You are a creation agent. In 2-3 short bullet points, note what context and approach this request needs. Be concise.",
+      },
+      { role: "user", content: prompt },
+    ], { timeoutMs: 20000 });
+    return result.content.slice(0, 400);
+  } catch {
+    return "Context loaded from your prompt.";
+  }
+}
 
 export async function POST(req: NextRequest) {
   await ensureDatabase();
@@ -19,23 +35,6 @@ export async function POST(req: NextRequest) {
     const { prompt, input, toolId } = await req.json();
     const userInput = (prompt || input || "").trim();
     if (!userInput) return NextResponse.json({ error: "Prompt required" }, { status: 400 });
-
-    const tool = toolId
-      ? AGENT_TOOLS.find((t) => t.id === toolId)
-      : await pickToolWithAI(userInput);
-
-    if (!tool) return NextResponse.json({ error: "No matching tool" }, { status: 404 });
-
-    const costType = tool.outputType === "image" ? "image" : tool.outputType === "video" ? "video" : tool.outputType === "audio" ? "audio" : "text";
-    const cost = await getCreditCost(costType);
-
-    let creditsDeducted = false;
-    try {
-      await deductCredits(user.id, cost, `${tool.name}`);
-      creditsDeducted = true;
-    } catch {
-      return NextResponse.json({ error: "Insufficient credits", creditsNeeded: cost }, { status: 402 });
-    }
 
     const run = await prisma.agentRun.create({
       data: { userId: user.id, prompt: userInput, status: "thinking" },
@@ -50,9 +49,33 @@ export async function POST(req: NextRequest) {
       return s;
     };
 
-    await addStep("thinking", "Understanding your request", userInput.slice(0, 200), 1);
-    await addStep("planning", `Selected tool: ${tool.name}`, `${tool.description} · ${cost} credits`, 2);
-    await addStep("executing", "AI agent working...", `Generating ${tool.outputType} output`, 3, "running");
+    await addStep("understand", "Understanding your request", userInput.slice(0, 200), 1);
+
+    const context = await gatherContext(userInput);
+    await addStep("gather", "Gathering intelligence", context, 2);
+
+    const tool = toolId
+      ? AGENT_TOOLS.find((t) => t.id === toolId)
+      : await pickToolWithAI(userInput);
+
+    if (!tool) {
+      await prisma.agentRun.update({ where: { id: run.id }, data: { status: "failed" } });
+      return NextResponse.json({ error: "No matching capability" }, { status: 404 });
+    }
+
+    const costType = tool.outputType === "image" ? "image" : tool.outputType === "video" ? "video" : tool.outputType === "audio" ? "audio" : "text";
+    const cost = await getCreditCost(costType);
+
+    let creditsDeducted = false;
+    try {
+      await deductCredits(user.id, cost, `${tool.name}`);
+      creditsDeducted = true;
+    } catch {
+      return NextResponse.json({ error: "Insufficient credits", creditsNeeded: cost }, { status: 402 });
+    }
+
+    await addStep("planning", `Tool selected: ${tool.name}`, `${tool.description} · ${cost} credits`, 3);
+    await addStep("create", "Creating your asset", `Generating ${tool.outputType} output`, 4, "running");
 
     let output;
     try {
@@ -61,21 +84,14 @@ export async function POST(req: NextRequest) {
       if (creditsDeducted) {
         await addCredits(user.id, cost, "refund", `refund_${run.id}`);
       }
-      await prisma.agentStep.updateMany({ where: { runId: run.id, order: 3 }, data: { status: "failed", content: "Generation failed" } });
+      await prisma.agentStep.updateMany({ where: { runId: run.id, order: 4 }, data: { status: "failed", content: "Generation failed" } });
       await prisma.agentRun.update({ where: { id: run.id }, data: { status: "failed" } });
       throw e;
     }
 
-    await prisma.agentStep.updateMany({ where: { runId: run.id, order: 3 }, data: { status: "done", content: `Done: ${output.title}` } });
-    await addStep("complete", "Task complete", `${output.downloadName} ready`, 4);
+    await prisma.agentStep.updateMany({ where: { runId: run.id, order: 4 }, data: { status: "done", content: `Created: ${output.title}` } });
+    await addStep("deliver", "Ready to download", `${output.downloadName} · ${output.type}`, 5);
     await prisma.agentRun.update({ where: { id: run.id }, data: { status: "completed" } });
-
-    let post = null;
-    if (tool.outputType === "text" || tool.studio === "social") {
-      post = await prisma.post.create({
-        data: { userId: user.id, caption: output.content.slice(0, 2200), imageUrl: output.imageUrl, status: "draft" },
-      });
-    }
 
     const updatedUser = await prisma.user.findUnique({ where: { id: user.id }, select: { credits: true } });
 
@@ -83,13 +99,12 @@ export async function POST(req: NextRequest) {
       output,
       tool: { id: tool.id, name: tool.name },
       run: { id: run.id, steps },
-      post,
       credits: updatedUser?.credits,
     });
   } catch (e) {
     console.error("Agent error:", e);
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Agent failed. Check API keys in Admin." },
+      { error: e instanceof Error ? e.message : "Agent failed. Add API keys in Admin." },
       { status: 500 }
     );
   }

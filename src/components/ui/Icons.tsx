@@ -144,10 +144,14 @@ export function TypeIcon({ type, className = "", size = 18 }: { type: string } &
 
 export function PhaseDot({ phase }: { phase: string }) {
   const colors: Record<string, string> = {
+    understand: "bg-violet-400",
     thinking: "bg-violet-400",
+    gather: "bg-cyan-400",
     planning: "bg-blue-400",
+    create: "bg-amber-400",
     executing: "bg-amber-400",
+    deliver: "bg-emerald-400",
     complete: "bg-emerald-400",
   };
-  return <span className={`inline-block h-2 w-2 rounded-full ${colors[phase] || "bg-neutral-500"}`} />;
+  return <span className={`inline-block h-2.5 w-2.5 rounded-full ${colors[phase] || "bg-neutral-500"}`} />;
 }

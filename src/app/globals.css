@@ -114,3 +114,26 @@ body {
 .agent-mind {
   box-shadow: 0 25px 80px rgba(0,0,0,0.4);
 }
+
+@keyframes auth-card-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.auth-card-in { animation: auth-card-in 0.6s ease-out forwards; }
+
+@keyframes auth-orb-drift {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(24px, -16px); }
+}
+
+.auth-orb-drift { animation: auth-orb-drift 8s ease-in-out infinite; }
+.auth-orb-drift-reverse { animation: auth-orb-drift 10s ease-in-out infinite reverse; }
+
+.auth-logo { animation: orb-pulse 3s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-orb-drift, .auth-orb-drift-reverse, .auth-logo, .animate-pulse-glow, .animate-marquee, .agent-orb-active {
+    animation: none !important;
+  }
+}

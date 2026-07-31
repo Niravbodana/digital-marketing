@@ -13,8 +13,8 @@ export type ConfigDef = {
 
 export const CONFIG_REGISTRY: ConfigDef[] = [
   // General
-  { key: "app_name", category: "general", label: "App Name", defaultValue: "Bodana Digital", type: "text", sortOrder: 1 },
-  { key: "app_tagline", category: "general", label: "Tagline", defaultValue: "The ultimate creation machine", type: "text", sortOrder: 2 },
+  { key: "app_name", category: "general", label: "App Name", defaultValue: "Bodana Creation Machine", type: "text", sortOrder: 1 },
+  { key: "app_tagline", category: "general", label: "Tagline", defaultValue: "Type one sentence. Get anything. In minutes.", type: "text", sortOrder: 2 },
   { key: "app_url", category: "general", label: "App URL", defaultValue: "http://localhost:3000", type: "url", sortOrder: 3 },
   { key: "support_email", category: "general", label: "Support Email", defaultValue: "support@bodana.digital", type: "text", sortOrder: 4 },
   { key: "default_credits", category: "general", label: "Free Credits (new users)", defaultValue: "100", type: "number", sortOrder: 5 },

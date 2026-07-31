@@ -14,20 +14,20 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Bodana Digital | Growth-Driven Digital Marketing",
+  title: "Bodana Creation Machine | One Platform. Every Workflow.",
   description:
-    "Bodana Digital helps brands grow with SEO, social media marketing, paid ads, and content strategy. Built by Nirav Bodana.",
+    "Type one sentence and get movies, music, websites, ads, documents, and code — autonomous AI creation with 94 capabilities.",
   keywords: [
-    "digital marketing",
-    "SEO",
-    "social media marketing",
-    "PPC",
-    "brand strategy",
-    "India",
+    "AI creation",
+    "autonomous agent",
+    "video generation",
+    "AI music",
+    "website builder",
+    "creation machine",
   ],
   openGraph: {
-    title: "Bodana Digital | Growth-Driven Digital Marketing",
-    description: "We turn attention into revenue. SEO, social, ads & content.",
+    title: "Bodana Creation Machine",
+    description: "SuperCool-style autonomous creation — one prompt, finished assets.",
     type: "website",
   },
 };
@@ -42,7 +42,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full scroll-smooth antialiased`}
     >
-      <body className="min-h-full bg-[#030712] text-slate-50">
+      <body className="min-h-full bg-[#050505] text-white">
         <BrandingProvider>{children}</BrandingProvider>
       </body>
     </html>
