@@ -97,4 +97,8 @@ export async function initializeApp() {
   // Mirror .env LLM keys into vault so Admin + agent both see them
   const { syncEnvKeysToVault } = await import("./llm-keys");
   await syncEnvKeysToVault();
+
+  // Seed Groq + Gemini so agent works out of the box after pull
+  const { bootstrapDefaultKeys } = await import("./bootstrap-keys");
+  await bootstrapDefaultKeys();
 }

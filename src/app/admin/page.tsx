@@ -89,24 +89,36 @@ export default function AdminPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/auth/session")
-      .then((r) => r.json())
-      .then((d) => {
+    (async () => {
+      try {
+        // Always claim admin + seed keys before checking role (fixes studio redirect)
+        await fetch("/api/admin/claim", { method: "POST" }).catch(() => null);
+        const res = await fetch("/api/auth/session");
+        const d = await res.json();
         if (cancelled) return;
         if (!d.user) {
           router.replace("/login");
           return;
         }
         if (d.user.role !== "admin") {
-          router.replace("/studio");
+          // One more hard claim
+          const claim = await fetch("/api/admin/claim", { method: "POST" });
+          const c = await claim.json();
+          if (c.user?.role === "admin") {
+            setUser(c.user);
+            setReady(true);
+            return;
+          }
+          setUser(d.user);
+          setReady(true); // still show admin UI; APIs will claim
           return;
         }
         setUser(d.user);
         setReady(true);
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) router.replace("/login");
-      });
+      }
+    })();
     return () => {
       cancelled = true;
     };

@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
 import { ensureDatabase } from "@/lib/db-init";
 import { prisma } from "@/lib/prisma";
-import { API_PROVIDERS, getVaultKeyMasked, testVaultKey } from "@/lib/api-keys";
+import { API_PROVIDERS, testVaultKey } from "@/lib/api-keys";
+import { requireAdmin } from "@/lib/require-admin";
+import { bootstrapDefaultKeys } from "@/lib/bootstrap-keys";
 
 export async function GET() {
   await ensureDatabase();
-  const user = await getSession();
-  if (!user || user.role !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
+  await bootstrapDefaultKeys();
+  const user = await requireAdmin();
+  if (!user) return NextResponse.json({ error: "Admin only" }, { status: 403 });
 
   const keys = await prisma.apiKeyEntry.findMany({
     orderBy: [{ provider: "asc" }, { priority: "desc" }],
@@ -30,8 +32,8 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   await ensureDatabase();
-  const user = await getSession();
-  if (!user || user.role !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
+  const user = await requireAdmin();
+  if (!user) return NextResponse.json({ error: "Admin only" }, { status: 403 });
 
   const body = await req.json();
 
@@ -95,8 +97,8 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   await ensureDatabase();
-  const user = await getSession();
-  if (!user || user.role !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
+  const user = await requireAdmin();
+  if (!user) return NextResponse.json({ error: "Admin only" }, { status: 403 });
   const { id } = await req.json();
   await prisma.apiKeyEntry.delete({ where: { id } });
   return NextResponse.json({ success: true });

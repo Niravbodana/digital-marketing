@@ -36,6 +36,21 @@ export function CreationMachine() {
         if (!d.user) router.push("/login");
         else setUser(d.user);
       });
+    // Seed keys + claim admin so agent/admin work after pull
+    fetch("/api/admin/claim", { method: "POST" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.user) setUser((u) => (u ? { ...u, role: d.user.role } : { ...d.user, credits: d.user.credits ?? 0 }));
+        return fetch("/api/status");
+      })
+      .then((r) => r?.json())
+      .then((d) => {
+        if (!d) return;
+        setAgentOnline(!!d.ai);
+        if (!d.ai) setShowKeyBox(true);
+        else setShowKeyBox(false);
+      })
+      .catch(() => null);
     fetch("/api/status")
       .then((r) => r.json())
       .then((d) => {

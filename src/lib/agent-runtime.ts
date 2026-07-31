@@ -149,10 +149,24 @@ type ThinkResult = {
 };
 
 function casualFallback(prompt: string): ThinkResult {
-  const isHi = /^(hi|hii|hello|hey|namaste)/i.test(prompt.trim());
+  const t = prompt.trim().toLowerCase();
+  const isHi = /^(hi|hii|hello|hey|namaste)/i.test(t);
+  const isHow = /how\s*are\s*you|kaise\s*ho|kya\s*haal/i.test(t);
+  let reply =
+    "I'm here and ready. Tell me what you want to create — logo, image, video, ad copy, document, or code.";
+  if (isHow) {
+    reply =
+      "I'm doing great — ready to build with you. What should we create today? Image, logo, video script, ad copy, document, or code.";
+  } else if (isHi) {
+    reply =
+      "Hi — I'm your Creation Machine agent. Tell me what you want to build: image, video, ad copy, logo, document, code — whatever you need. I'll think it through, research if needed, plan, then create.";
+  } else if (/thanks|thank\s*you/i.test(t)) {
+    reply = "You're welcome. Send the next brief whenever you're ready.";
+  }
+
   return {
     mode: "chat",
-    summary: "Casual greeting / conversation",
+    summary: "Casual conversation",
     deliverableType: "none",
     tone: "friendly-professional",
     audience: "user",
@@ -160,14 +174,67 @@ function casualFallback(prompt: string): ThinkResult {
     needsWebResearch: false,
     researchQuery: "",
     suggestedApproach: "Respond conversationally. Do not create any file.",
-    replyToUser: isHi
-      ? "Hi — I'm your Creation Machine agent. Tell me what you want to build: image, video, ad copy, logo, document, code — whatever you need. I'll think it through, research if needed, plan, then create."
-      : "Got it. What would you like me to create or help with?",
+    replyToUser: reply,
     thinkingTrace:
-      "Message looks like a greeting or casual chat.\nNo deliverable requested.\nI should reply warmly and wait for a real task.\nI will NOT run creation tools.",
+      "Casual chat — no deliverable.\nReply naturally.\nDo not run creation tools.",
     assumptions: [],
     clarifyingQuestion: "",
   };
+}
+
+/** Natural chat reply via LLM when keys are available */
+async function chatReply(
+  prompt: string,
+  memory: MemoryEntry[],
+  history: ConversationTurn[]
+): Promise<ThinkResult> {
+  const base = casualFallback(prompt);
+  if (!(await hasAnyLLMKey())) return base;
+
+  const historyBlock = history
+    .slice(-6)
+    .map((t) => `${t.role}: ${t.content.slice(0, 300)}`)
+    .join("\n");
+
+  try {
+    const result = await chatComplete(
+      [
+        {
+          role: "system",
+          content: `${AGENT_IDENTITY}
+
+You are chatting with the user. Be warm, human, and professional. NO EMOJIS.
+Do NOT create files. Do NOT pretend you already created something.
+If they greet or ask how you are, answer naturally and invite a creation brief.
+Reply in the user's language (Hindi/English/Hinglish).
+Keep it to 2-4 sentences.
+
+Return ONLY JSON:
+{
+  "replyToUser": "your reply",
+  "thinkingTrace": "2-4 short lines of inner reasoning"
+}
+
+Memory:
+${formatMemoryForPrompt(memory)}
+
+Recent:
+${historyBlock || "(new)"}`,
+        },
+        { role: "user", content: prompt },
+      ],
+      { timeoutMs: 25000 }
+    );
+    const raw = result.content.replace(/```json\n?|\n?```/g, "").trim();
+    const parsed = JSON.parse(raw);
+    return {
+      ...base,
+      replyToUser: stripEmojis(String(parsed.replyToUser || base.replyToUser)),
+      thinkingTrace: stripEmojis(String(parsed.thinkingTrace || base.thinkingTrace)),
+    };
+  } catch {
+    return base;
+  }
 }
 
 async function think(
@@ -177,7 +244,7 @@ async function think(
   forcedToolId?: string
 ): Promise<ThinkResult> {
   if (!forcedToolId && isCasualChat(prompt) && !looksLikeCreationRequest(prompt)) {
-    return casualFallback(prompt);
+    return chatReply(prompt, memory, history);
   }
 
   const fallbackMode: Mode = looksLikeCreationRequest(prompt) || forcedToolId ? "create" : "clarify";
