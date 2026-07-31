@@ -120,8 +120,18 @@ export function extractMemoryCandidates(userMessage: string, intentSummary: stri
   const style = userMessage.match(/(?:style|tone|vibe|look)\s*[:=]?\s*([a-zA-Z ,-]{3,60})/i);
   if (style?.[1]) out.push({ key: "preferred_style", value: style[1].trim() });
 
-  if (intentSummary) {
+  if (intentSummary && !/greeting|casual|conversation/i.test(intentSummary)) {
     out.push({ key: "last_request", value: intentSummary.slice(0, 200) });
   }
   return out;
+}
+
+/** Self-reflective log after successful tasks (appends to rolling reflection memory) */
+export async function appendReflection(userId: string, note: string): Promise<void> {
+  const key = "reflections";
+  const existing = await loadUserMemory(userId);
+  const prev = existing.find((e) => e.key === key)?.value || "";
+  const stamp = new Date().toISOString().slice(0, 16);
+  const next = `${prev}\n[${stamp}] ${note}`.trim().slice(-1800);
+  await saveUserMemory(userId, key, next);
 }

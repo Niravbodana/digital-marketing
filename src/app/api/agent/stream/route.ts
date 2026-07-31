@@ -4,7 +4,7 @@ import { ensureDatabase } from "@/lib/db-init";
 import { prisma } from "@/lib/prisma";
 import { getCreditCost } from "@/lib/credits";
 import { deductCredits, addCredits } from "@/lib/config";
-import { runAgentLoop, type AgentAction } from "@/lib/agent-runtime";
+import { runAgentLoop, isCasualChat, type AgentAction } from "@/lib/agent-runtime";
 import {
   loadUserMemory,
   getOrCreateConversation,
@@ -46,10 +46,10 @@ export async function POST(req: NextRequest) {
       try {
         const memory = await loadUserMemory(user.id);
         const conversation = conversationIdIn
-          ? await prisma.conversation.findFirst({
+          ? (await prisma.conversation.findFirst({
               where: { id: conversationIdIn, userId: user.id },
               include: { messages: { orderBy: { createdAt: "asc" }, take: 40 } },
-            }) || await getOrCreateConversation(user.id, userInput.slice(0, 60))
+            })) || (await getOrCreateConversation(user.id, userInput.slice(0, 60)))
           : await getOrCreateConversation(user.id, userInput.slice(0, 60));
 
         const history = await loadRecentTurns(conversation.id, 12);
@@ -65,7 +65,6 @@ export async function POST(req: NextRequest) {
         let stepOrder = 0;
         const emit = (action: AgentAction) => {
           send(action);
-          // Persist key steps for run history
           if (action.type === "thinking" && action.status === "done") {
             stepOrder += 1;
             prisma.agentStep
@@ -113,29 +112,8 @@ export async function POST(req: NextRequest) {
           }
         };
 
-        // Pre-deduct credits based on guessed type after think — we deduct inside after plan
-        // Use a two-phase approach: run loop but intercept create... Actually runAgentLoop does create inside.
-        // So we need to deduct before create. We'll estimate cost from prompt heuristically first,
-        // then adjust. Simpler: deduct after plan by wrapping — for now deduct mid-stream via custom flow.
-
-        // Run until plan is known by doing a lightweight estimate first
-        const roughType = /image|logo|photo|banner|poster|graphic|art/i.test(userInput)
-          ? "image"
-          : /video|reel|trailer/i.test(userInput)
-            ? "video"
-            : /song|music|voice|audio/i.test(userInput)
-              ? "audio"
-              : "text";
-        cost = await getCreditCost(roughType);
-
-        try {
-          await deductCredits(user.id, cost, "Agent run");
-          creditsDeducted = true;
-        } catch {
-          send({ type: "error", id: "err-credits", error: "Insufficient credits" });
-          controller.close();
-          return;
-        }
+        // Don't pre-charge for likely chat — charge only after create succeeds
+        const likelyChat = !toolId && isCasualChat(userInput);
 
         const result = await runAgentLoop({
           userId: user.id,
@@ -146,36 +124,42 @@ export async function POST(req: NextRequest) {
           emit,
         });
 
-        // Adjust credits if actual output type differs
-        const actualType =
-          result.tool.outputType === "image"
-            ? "image"
-            : result.tool.outputType === "video"
-              ? "video"
-              : result.tool.outputType === "audio"
-                ? "audio"
-                : "text";
-        const actualCost = await getCreditCost(actualType);
-        if (actualCost !== cost) {
-          const diff = actualCost - cost;
-          if (diff > 0) {
-            try {
-              await deductCredits(user.id, diff, `${result.tool.name} adjust`);
-              cost = actualCost;
-            } catch {
-              // keep original charge
-            }
-          } else if (diff < 0) {
-            await addCredits(user.id, -diff, "refund", `adjust_${runId}`);
-            cost = actualCost;
+        if (result.created && result.tool && result.output) {
+          const actualType =
+            result.tool.outputType === "image"
+              ? "image"
+              : result.tool.outputType === "video"
+                ? "video"
+                : result.tool.outputType === "audio"
+                  ? "audio"
+                  : "text";
+          cost = await getCreditCost(actualType);
+          try {
+            await deductCredits(user.id, cost, result.tool.name);
+            creditsDeducted = true;
+          } catch {
+            send({ type: "error", id: "err-credits", error: "Insufficient credits for this creation" });
+          }
+
+          await appendMessage(conversation.id, "assistant", result.think.replyToUser, {
+            toolId: result.tool.id,
+            title: result.output.title,
+          });
+        } else {
+          // Free chat / clarify — no credits
+          await appendMessage(conversation.id, "assistant", result.think.replyToUser, {
+            mode: result.think.mode,
+            chat: true,
+          });
+          if (likelyChat) {
+            // already handled
           }
         }
 
-        await appendMessage(conversation.id, "assistant", result.think.replyToUser, {
-          toolId: result.tool.id,
-          title: result.output.title,
+        await prisma.agentRun.update({
+          where: { id: runId },
+          data: { status: result.created ? "completed" : "completed" },
         });
-        await prisma.agentRun.update({ where: { id: runId }, data: { status: "completed" } });
 
         const updatedUser = await prisma.user.findUnique({
           where: { id: user.id },

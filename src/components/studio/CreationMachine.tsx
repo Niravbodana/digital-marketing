@@ -238,22 +238,22 @@ export function CreationMachine() {
                 submit();
               }
             }}
-            placeholder="Describe what you need — agent will think, recall memory, search, plan, then create…"
+            placeholder="What should I create? Or say hi to start…"
             rows={2}
             disabled={loading}
             className="w-full resize-none rounded-xl bg-transparent px-4 py-3 text-sm outline-none placeholder:text-neutral-600 disabled:opacity-50"
           />
           <div className="flex items-center justify-between px-3 pb-2">
-            <p className="font-mono text-[10px] text-neutral-600">
-              Shift+Enter newline · memory + tools · no emojis
+            <p className="text-[10px] text-neutral-600">
+              Think · Memory · Search · Plan · Create
             </p>
             <button
               type="button"
               onClick={submit}
               disabled={loading || !input.trim()}
-              className="rounded-lg bg-white px-5 py-2 text-sm font-semibold text-black disabled:opacity-40"
+              className="rounded-lg bg-white px-5 py-2 text-sm font-semibold text-black transition hover:bg-neutral-200 disabled:opacity-40"
             >
-              {loading ? "Running…" : "Send"}
+              {loading ? "Working…" : "Send"}
             </button>
           </div>
         </div>
