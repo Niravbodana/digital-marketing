@@ -1,9 +1,9 @@
 import { AGENT_TOOLS, type AgentTool } from "./tools";
 import { chatComplete } from "./ai-router";
 
-export function pickToolForPrompt(prompt: string, studio?: string): AgentTool {
+export function pickToolForPrompt(prompt: string): AgentTool {
   const lower = prompt.toLowerCase();
-  const pool = studio ? AGENT_TOOLS.filter((t) => t.studio === studio) : AGENT_TOOLS;
+  const pool = AGENT_TOOLS;
 
   const rules: Array<{ match: RegExp; type?: AgentTool["outputType"]; studio?: string }> = [
     { match: /image|logo|photo|thumbnail|banner|art|design|graphic/i, type: "image" },
@@ -29,25 +29,24 @@ export function pickToolForPrompt(prompt: string, studio?: string): AgentTool {
   return pool[0] || AGENT_TOOLS[0];
 }
 
-export async function pickToolWithAI(prompt: string, studio?: string): Promise<AgentTool> {
-  const pool = (studio ? AGENT_TOOLS.filter((t) => t.studio === studio) : AGENT_TOOLS).slice(0, 30);
-  const toolList = pool.map((t) => `${t.id}: ${t.name} (${t.outputType})`).join("\n");
+export async function pickToolWithAI(prompt: string): Promise<AgentTool> {
+  const toolList = AGENT_TOOLS.map((t) => `${t.id}: ${t.name} [${t.outputType}]`).join("\n");
 
   try {
     const result = await chatComplete([
       {
         role: "system",
-        content: `You pick the best tool for a user request. Reply with ONLY the tool id, nothing else.\n\nTools:\n${toolList}`,
+        content: `You are Bodana AI — one unified agent with ${AGENT_TOOLS.length} capabilities. Pick the single best tool for the user request. Reply with ONLY the tool id, nothing else.\n\nTools:\n${toolList}`,
       },
       { role: "user", content: prompt },
-    ], { timeoutMs: 15000 });
+    ], { timeoutMs: 20000 });
 
     const id = result.content.trim().split("\n")[0].trim();
-    const found = AGENT_TOOLS.find((t) => t.id === id);
+    const found = AGENT_TOOLS.find((t) => id.includes(t.id) || t.id === id);
     if (found) return found;
   } catch {
     // fallback to rules
   }
 
-  return pickToolForPrompt(prompt, studio);
+  return pickToolForPrompt(prompt);
 }

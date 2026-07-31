@@ -16,13 +16,13 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Login required" }, { status: 401 });
 
   try {
-    const { prompt, input, toolId, studio } = await req.json();
+    const { prompt, input, toolId } = await req.json();
     const userInput = (prompt || input || "").trim();
     if (!userInput) return NextResponse.json({ error: "Prompt required" }, { status: 400 });
 
     const tool = toolId
       ? AGENT_TOOLS.find((t) => t.id === toolId)
-      : await pickToolWithAI(userInput, studio);
+      : await pickToolWithAI(userInput);
 
     if (!tool) return NextResponse.json({ error: "No matching tool" }, { status: 404 });
 

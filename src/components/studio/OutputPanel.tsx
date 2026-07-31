@@ -1,14 +1,15 @@
 "use client";
 
 import type { ToolOutput } from "@/lib/tool-executor";
+import { IconDownload, IconOutput } from "@/components/ui/Icons";
 
 export function OutputPanel({ outputs }: { outputs: ToolOutput[] }) {
   if (!outputs.length) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center">
-        <p className="text-4xl">📦</p>
+      <div className="flex h-64 flex-col items-center justify-center rounded-xl border border-dashed border-white/[0.08] bg-[#0c0c0c] p-8 text-center">
+        <IconOutput className="text-neutral-600" />
         <p className="mt-3 text-sm font-medium text-neutral-400">No outputs yet</p>
-        <p className="mt-1 text-xs text-neutral-600">Pick a tool or type a prompt — files appear here</p>
+        <p className="mt-1 text-xs text-neutral-600">Run the agent — results appear here</p>
       </div>
     );
   }
@@ -27,7 +28,7 @@ export function OutputPanel({ outputs }: { outputs: ToolOutput[] }) {
               <img src={o.imageUrl} alt={o.title} className="h-full w-full object-cover" />
               {o.type === "video" && !o.videoUrl && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                  <span className="rounded-full bg-white/20 px-4 py-2 text-sm backdrop-blur">▶ Video Script Ready</span>
+                  <span className="rounded-md border border-white/20 bg-black/50 px-4 py-2 text-xs backdrop-blur">Video script ready</span>
                 </div>
               )}
             </div>
@@ -52,8 +53,9 @@ export function OutputPanel({ outputs }: { outputs: ToolOutput[] }) {
             </div>
             <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-neutral-400">{o.content.slice(0, 200)}...</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <button onClick={() => downloadFile(o)} className="rounded-lg bg-orange-500 px-4 py-2 text-xs font-semibold text-white hover:bg-orange-400">
-                ⬇ Download
+              <button onClick={() => downloadFile(o)} className="flex items-center gap-1.5 rounded-lg bg-white px-4 py-2 text-xs font-medium text-black hover:bg-neutral-200">
+                <IconDownload />
+                Download
               </button>
               <button onClick={() => exportFormat(o, "pdf")} className="rounded-lg border border-white/10 px-4 py-2 text-xs text-neutral-400 hover:text-white">
                 PDF

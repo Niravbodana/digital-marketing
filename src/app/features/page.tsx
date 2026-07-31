@@ -8,7 +8,7 @@ const FEATURES = [
   { icon: "🖼️", title: "AI Image & Photography", desc: "DALL-E 3 powered product shots, logos, ads, visual art — portfolio grade.", tag: "Image" },
   { icon: "📄", title: "Documents & Decks", desc: "Books, pitch decks, proposals, reports — PDF & DOCX export ready.", tag: "Docs" },
   { icon: "💻", title: "Code & Websites", desc: "Working websites, React apps, APIs, automation scripts — deployable code.", tag: "Code" },
-  { icon: "🤖", title: "94 AI Agent Tools", desc: "8 studios, 94 specialized tools — from movie trailers to autonomous agents.", tag: "Tools" },
+  { icon: "AI", title: "94 AI Capabilities", desc: "One unified agent with 94 built-in capabilities — from video to code to social.", tag: "Tools" },
   { icon: "📅", title: "Post Scheduler", desc: "Schedule and auto-publish to Instagram, LinkedIn, Twitter via Postiz.", tag: "Social" },
   { icon: "💬", title: "Chat Refine", desc: "Iterative AI editing — say what to change, get updated output instantly.", tag: "AI" },
   { icon: "👥", title: "Teams & White-label", desc: "Multi-user teams, custom branding, your logo and colors on the platform.", tag: "Enterprise" },

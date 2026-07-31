@@ -44,9 +44,9 @@ export function ChatRefinePanel({ initialContent, onApply }: { initialContent?: 
 
   return (
     <div className="flex h-80 flex-col rounded-2xl border border-white/10 bg-white/[0.02]">
-      <div className="border-b border-white/5 px-4 py-3">
-        <h3 className="text-sm font-semibold">💬 Chat Refine</h3>
-        <p className="text-[10px] text-neutral-600">AI se content improve karo — iterative editing</p>
+      <div className="border-b border-white/[0.06] px-4 py-3">
+        <h3 className="text-sm font-medium">Refine with AI</h3>
+        <p className="text-[10px] text-neutral-600">Iteratively improve your output</p>
       </div>
       <div className="flex-1 space-y-3 overflow-y-auto p-4">
         {messages.map((m) => (

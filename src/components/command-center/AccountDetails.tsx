@@ -16,10 +16,12 @@ type Account = {
 export function AccountDetails({ account }: { account: Account | null }) {
   if (!account) {
     return (
-      <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-6 text-center">
-        <p className="text-3xl">📸</p>
-        <p className="mt-2 text-sm text-slate-400">No account connected</p>
-        <p className="mt-1 text-xs text-slate-500">Username + password se connect karo</p>
+      <div className="rounded-xl border border-dashed border-white/[0.08] bg-white/[0.02] p-6 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-sm font-medium text-neutral-500">
+          IG
+        </div>
+        <p className="mt-3 text-sm text-neutral-400">No account connected</p>
+        <p className="mt-1 text-xs text-neutral-600">Connect your Instagram account to publish</p>
       </div>
     );
   }
