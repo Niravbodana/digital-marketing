@@ -18,6 +18,7 @@ export const CONFIG_REGISTRY: ConfigDef[] = [
   { key: "app_url", category: "general", label: "App URL", defaultValue: "http://localhost:3000", type: "url", sortOrder: 3 },
   { key: "support_email", category: "general", label: "Support Email", defaultValue: "support@bodana.digital", type: "text", sortOrder: 4 },
   { key: "default_credits", category: "general", label: "Free Credits (new users)", defaultValue: "100", type: "number", sortOrder: 5 },
+  { key: "admin_emails", category: "general", label: "Admin Emails (comma separated)", defaultValue: "niravb68@gmail.com", type: "textarea", sortOrder: 6 },
 
   // Branding / White-label
   { key: "brand_logo_url", category: "branding", label: "Logo URL", type: "url", sortOrder: 1 },

@@ -3,6 +3,7 @@ import { ensureDatabase } from "@/lib/db-init";
 import { hashPassword, createToken, setSessionCookie } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getDefaultSignupCredits } from "@/lib/credits";
+import { syncAdminRole } from "@/lib/admin-access";
 
 export async function POST(req: NextRequest) {
   await ensureDatabase();
@@ -30,16 +31,18 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  const synced = await syncAdminRole(user);
+
   if (defaultCredits > 0) {
     await prisma.creditTransaction.create({
       data: { userId: user.id, amount: defaultCredits, type: "bonus", description: "Welcome bonus credits" },
     });
   }
 
-  const token = await createToken(user.id, user.role);
+  const token = await createToken(synced.id, synced.role);
   await setSessionCookie(token);
 
   return NextResponse.json({
-    user: { id: user.id, name: user.name, email: user.email, role: user.role, credits: user.credits },
+    user: { id: synced.id, name: synced.name, email: synced.email, role: synced.role, credits: synced.credits },
   });
 }

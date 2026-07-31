@@ -18,6 +18,8 @@ export async function ensureDatabase() {
   if (!initDone) {
     const { initializeApp } = await import("./init");
     await initializeApp();
+    const { promoteConfiguredAdmins } = await import("./admin-access");
+    await promoteConfiguredAdmins();
     initDone = true;
   }
 }

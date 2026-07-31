@@ -82,9 +82,15 @@ export default function AdminPage() {
 
   useEffect(() => {
     fetch("/api/auth/session").then((r) => r.json()).then((d) => {
-      if (!d.user) router.push("/login");
-      else if (d.user.role !== "admin") router.push("/studio");
-      else setUser(d.user);
+      if (!d.user) {
+        router.push("/login");
+        return;
+      }
+      if (d.user.role !== "admin") {
+        router.push("/studio");
+        return;
+      }
+      setUser(d.user);
     });
   }, [router]);
 

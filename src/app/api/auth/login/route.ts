@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ensureDatabase } from "@/lib/db-init";
 import { verifyPassword, createToken, setSessionCookie } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { syncAdminRole } from "@/lib/admin-access";
 
 export async function POST(req: NextRequest) {
   await ensureDatabase();
@@ -12,10 +13,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }
 
-  const token = await createToken(user.id, user.role);
+  const synced = await syncAdminRole(user);
+  const token = await createToken(synced.id, synced.role);
   await setSessionCookie(token);
 
   return NextResponse.json({
-    user: { id: user.id, name: user.name, email: user.email, role: user.role },
+    user: { id: synced.id, name: synced.name, email: synced.email, role: synced.role, credits: synced.credits },
   });
 }
