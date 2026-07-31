@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "postiz-local": {
+      "url": "http://localhost:4007/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ${env:POSTIZ_API_KEY}"
+      }
+    },
+    "postiz-stdio": {
+      "command": "npx",
+      "args": ["-y", "postiz-mcp"],
+      "env": {
+        "POSTIZ_URL": "http://localhost:4007",
+        "POSTIZ_API_KEY": "${env:POSTIZ_API_KEY}",
+        "POSTIZ_ENABLE_WRITE": "false"
+      }
+    }
+  }
+}

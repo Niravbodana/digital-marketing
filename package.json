@@ -1,0 +1,27 @@
+{
+  "name": "workspace",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "bash scripts/all-set.sh",
+    "verify:postiz": "bash scripts/verify-postiz-local.sh",
+    "tunnel:postiz": "bash scripts/expose-postiz-tunnel.sh",
+    "postiz:up": "cd postiz && sudo docker compose up -d",
+    "postiz:down": "cd postiz && sudo docker compose down"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Niravbodana/digital-marketing.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Niravbodana/digital-marketing/issues"
+  },
+  "homepage": "https://github.com/Niravbodana/digital-marketing#readme",
+  "dependencies": {
+    "postiz-mcp": "^0.2.0"
+  }
+}
