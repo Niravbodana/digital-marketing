@@ -3,13 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "prisma generate && prisma db push && next dev",
-    "build": "prisma generate && prisma db push && next build",
+    "dev": "prisma generate && prisma db push && next dev --webpack",
+    "dev:turbo": "prisma generate && prisma db push && next dev",
+    "build": "prisma generate && prisma db push && next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
-    "setup": "prisma generate && prisma db push"
+    "setup": "prisma generate && prisma db push",
+    "clean": "rm -rf .next node_modules && npm install"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
