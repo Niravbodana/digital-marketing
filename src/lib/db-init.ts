@@ -1,9 +1,11 @@
 import { prisma } from "./prisma";
+import { loadEnvFiles } from "./load-env";
 
 let ready = false;
 let initDone = false;
 
 export async function ensureDatabase() {
+  loadEnvFiles();
   if (ready && initDone) return;
   if (!ready) {
     try {

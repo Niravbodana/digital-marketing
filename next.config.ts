@@ -1,3 +1,7 @@
+import { loadEnvFiles } from "./load-env";
+
+loadEnvFiles();
+
 const nextConfig = {
   images: {
     remotePatterns: [
@@ -7,6 +11,7 @@ const nextConfig = {
       { protocol: "https", hostname: "**.cdninstagram.com" },
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "cdn.coverr.co" },
+      { protocol: "https", hostname: "image.pollinations.ai" },
     ],
   },
 };
