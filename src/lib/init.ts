@@ -93,4 +93,8 @@ export async function initializeApp() {
       await prisma.apiKeyEntry.create({ data: { ...k, isActive: true, status: "unknown" } });
     }
   }
+
+  // Mirror .env LLM keys into vault so Admin + agent both see them
+  const { syncEnvKeysToVault } = await import("./llm-keys");
+  await syncEnvKeysToVault();
 }

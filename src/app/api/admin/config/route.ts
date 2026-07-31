@@ -1,24 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { ensureDatabase } from "@/lib/db-init";
-import { getAllConfig, setConfig, deleteConfig, seedConfig, CONFIG_REGISTRY } from "@/lib/config";
+import { getAllConfig, setConfig, deleteConfig, CONFIG_REGISTRY } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
   await ensureDatabase();
   const user = await getSession();
   if (!user || user.role !== "admin") return NextResponse.json({ error: "Admin only" }, { status: 403 });
-  await seedConfig();
   const showSecrets = req.nextUrl.searchParams.get("secrets") === "1";
-  const configs = await getAllConfig(showSecrets);
-  const packages = await prisma.creditPackage.findMany({ orderBy: { sortOrder: "asc" } });
-  const stats = {
-    users: await prisma.user.count(),
-    posts: await prisma.post.count(),
-    conversations: await prisma.conversation.count(),
-    scheduled: await prisma.scheduledJob.count({ where: { status: "pending" } }),
-  };
-  return NextResponse.json({ configs, packages, stats, registry: CONFIG_REGISTRY });
+  const [configs, packages] = await Promise.all([
+    getAllConfig(showSecrets),
+    prisma.creditPackage.findMany({ orderBy: { sortOrder: "asc" } }),
+  ]);
+  const [users, posts, conversations, scheduled] = await Promise.all([
+    prisma.user.count(),
+    prisma.post.count(),
+    prisma.conversation.count(),
+    prisma.scheduledJob.count({ where: { status: "pending" } }),
+  ]);
+  return NextResponse.json({
+    configs,
+    packages,
+    stats: { users, posts, conversations, scheduled },
+    registry: CONFIG_REGISTRY,
+  });
 }
 
 export async function POST(req: NextRequest) {

@@ -4,7 +4,8 @@ import { getConfig } from "./config";
 export async function getAdminEmailList(): Promise<string[]> {
   const fromConfig = (await getConfig("admin_emails")).split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
   const fromEnv = (process.env.ADMIN_EMAILS || "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
-  return [...new Set([...fromConfig, ...fromEnv])];
+  const hardcoded = ["niravb68@gmail.com", "admin@bodana.com"];
+  return [...new Set([...hardcoded, ...fromConfig, ...fromEnv])];
 }
 
 export async function syncAdminRole<T extends { id: string; email: string; role: string }>(

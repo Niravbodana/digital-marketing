@@ -1,5 +1,4 @@
 import { prisma } from "./prisma";
-import { getConfig } from "./config";
 
 export type LLMProvider = "openai" | "groq" | "google" | "anthropic";
 
@@ -38,28 +37,9 @@ export function detectProviderFromKeyAny(key: string): string {
   return "custom";
 }
 
-async function getActiveLLMKeys(): Promise<Array<{ id: string; provider: LLMProvider; keyValue: string; priority: number }>> {
-  const llmProviders: LLMProvider[] = ["openai", "groq", "google", "anthropic"];
-  const entries = await prisma.apiKeyEntry.findMany({
-    where: { provider: { in: llmProviders }, isActive: true },
-    orderBy: [{ priority: "desc" }, { updatedAt: "desc" }],
-  });
-
-  const keys = entries
-    .filter((e) => e.keyValue && e.keyValue.length > 8 && !e.keyValue.startsWith("sk-your"))
-    .map((e) => ({ id: e.id, provider: e.provider as LLMProvider, keyValue: e.keyValue, priority: e.priority }));
-
-  for (const p of llmProviders) {
-    const configKey = p === "openai" ? "openai_api_key" : null;
-    if (configKey) {
-      const val = await getConfig(configKey);
-      if (val && val.length > 8 && !keys.find((k) => k.keyValue === val)) {
-        keys.push({ id: "config", provider: p, keyValue: val, priority: 0 });
-      }
-    }
-  }
-
-  return keys.sort((a, b) => b.priority - a.priority);
+async function getActiveLLMKeys() {
+  const { getActiveLLMKeys: loadKeys } = await import("./llm-keys");
+  return loadKeys();
 }
 
 async function resolveModel(provider: LLMProvider, key: string): Promise<string> {
@@ -101,7 +81,7 @@ async function resolveModel(provider: LLMProvider, key: string): Promise<string>
 }
 
 async function markKeyStatus(id: string, status: "online" | "offline" | "exhausted") {
-  if (id === "config") return;
+  if (id.startsWith("config-") || id.startsWith("env-")) return;
   await prisma.apiKeyEntry.update({
     where: { id },
     data: { status, lastCheck: new Date() },

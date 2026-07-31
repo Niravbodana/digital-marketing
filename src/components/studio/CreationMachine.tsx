@@ -24,6 +24,10 @@ export function CreationMachine() {
   const [user, setUser] = useState<{ name: string; role: string; credits: number } | null>(null);
   const [agentOnline, setAgentOnline] = useState(false);
   const [showTools, setShowTools] = useState(false);
+  const [showKeyBox, setShowKeyBox] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [keyConnecting, setKeyConnecting] = useState(false);
+  const [keyMsg, setKeyMsg] = useState("");
 
   useEffect(() => {
     fetch("/api/auth/session")
@@ -34,9 +38,43 @@ export function CreationMachine() {
       });
     fetch("/api/status")
       .then((r) => r.json())
-      .then((d) => setAgentOnline(!!d.ai))
-      .catch(() => null);
+      .then((d) => {
+        setAgentOnline(!!d.ai);
+        if (!d.ai) setShowKeyBox(true);
+      })
+      .catch(() => setShowKeyBox(true));
   }, [router]);
+
+  async function connectKey(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = apiKeyInput.trim();
+    if (!trimmed) return;
+    setKeyConnecting(true);
+    setKeyMsg("");
+    try {
+      const res = await fetch("/api/agent/connect-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keyValue: trimmed }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setKeyMsg(data.error || "Failed");
+      } else {
+        setKeyMsg(`${String(data.provider || "AI").toUpperCase()} connected · ${data.model || ""}`);
+        setApiKeyInput("");
+        setAgentOnline(true);
+        setShowKeyBox(false);
+        if (data.role === "admin") {
+          setUser((u) => (u ? { ...u, role: "admin" } : u));
+        }
+      }
+    } catch {
+      setKeyMsg("Connection failed");
+    } finally {
+      setKeyConnecting(false);
+    }
+  }
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -184,6 +222,15 @@ export function CreationMachine() {
           <span className={`font-mono ${agentOnline ? "text-emerald-400" : "text-neutral-600"}`}>
             {agentOnline ? "online" : "no api key"}
           </span>
+          {!agentOnline && (
+            <button
+              type="button"
+              onClick={() => setShowKeyBox(true)}
+              className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-amber-200"
+            >
+              Add key
+            </button>
+          )}
           <button
             type="button"
             onClick={newSession}
@@ -227,6 +274,38 @@ export function CreationMachine() {
         </div>
 
         {error && <p className="mt-2 text-center font-mono text-xs text-red-400">{error}</p>}
+
+        {(showKeyBox || !agentOnline) && (
+          <div className="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-amber-100">Connect API key to unlock full brain</p>
+                <p className="mt-1 text-xs text-neutral-500">OpenAI (sk-…) · Groq (gsk_…) · Gemini (AIza…) · Claude (sk-ant-…)</p>
+              </div>
+              {agentOnline && (
+                <button type="button" onClick={() => setShowKeyBox(false)} className="text-xs text-neutral-500">Hide</button>
+              )}
+            </div>
+            <form onSubmit={connectKey} className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <input
+                type="password"
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+                placeholder="Paste your API key here…"
+                disabled={keyConnecting}
+                className="flex-1 rounded-lg border border-white/10 bg-black/40 px-3 py-2 font-mono text-sm outline-none"
+              />
+              <button
+                type="submit"
+                disabled={keyConnecting || !apiKeyInput.trim()}
+                className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black disabled:opacity-40"
+              >
+                {keyConnecting ? "Connecting…" : "Connect"}
+              </button>
+            </form>
+            {keyMsg && <p className="mt-2 text-xs text-neutral-400">{keyMsg}</p>}
+          </div>
+        )}
 
         <div className="relative mt-4 rounded-2xl border border-white/[0.1] bg-black/50 p-1 shadow-[0_0_40px_rgba(56,189,248,0.06)] backdrop-blur-xl">
           <textarea

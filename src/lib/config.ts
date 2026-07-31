@@ -83,23 +83,34 @@ export const CONFIG_REGISTRY: ConfigDef[] = [
 const cache = new Map<string, string>();
 let cacheTime = 0;
 
+let seeded = false;
+
 export async function seedConfig() {
-  for (const def of CONFIG_REGISTRY) {
-    await prisma.siteConfig.upsert({
-      where: { key: def.key },
-      create: {
+  if (seeded) return;
+  const count = await prisma.siteConfig.count();
+  if (count >= CONFIG_REGISTRY.length) {
+    seeded = true;
+    return;
+  }
+  // Only insert missing keys — avoid N upserts every request (admin lag fix)
+  const existing = await prisma.siteConfig.findMany({ select: { key: true } });
+  const have = new Set(existing.map((e) => e.key));
+  const missing = CONFIG_REGISTRY.filter((d) => !have.has(d.key));
+  if (missing.length) {
+    await prisma.siteConfig.createMany({
+      data: missing.map((def) => ({
         key: def.key,
         value: def.defaultValue || "",
         category: def.category,
         label: def.label,
-        description: def.description,
+        description: def.description || null,
         type: def.type,
         isSecret: def.isSecret || false,
         sortOrder: def.sortOrder,
-      },
-      update: { label: def.label, category: def.category, type: def.type },
+      })),
     });
   }
+  seeded = true;
 }
 
 export async function getConfig(key: string): Promise<string> {
@@ -111,7 +122,6 @@ export async function getConfig(key: string): Promise<string> {
 }
 
 export async function getAllConfig(includeSecrets = false) {
-  await seedConfig();
   const rows = await prisma.siteConfig.findMany({ orderBy: [{ category: "asc" }, { sortOrder: "asc" }] });
   return rows.map((r) => ({
     ...r,

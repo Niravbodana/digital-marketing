@@ -13,6 +13,7 @@ export async function GET() {
     orderBy: [{ provider: "asc" }, { priority: "desc" }],
   });
 
+  const real = keys.filter((k) => k.keyValue && k.keyValue.length > 8);
   return NextResponse.json({
     keys: keys.map((k) => ({
       ...k,
@@ -20,9 +21,9 @@ export async function GET() {
     })),
     providers: API_PROVIDERS,
     stats: {
-      total: keys.length,
-      online: keys.filter((k) => k.status === "online").length,
-      active: keys.filter((k) => k.isActive).length,
+      total: real.length,
+      online: real.filter((k) => k.status === "online").length,
+      active: real.filter((k) => k.isActive).length,
     },
   });
 }
