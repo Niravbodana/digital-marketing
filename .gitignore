@@ -1,4 +1,4 @@
+postiz-docker-compose/
 node_modules/
 .env
-postiz-docker-compose/.env
 *.log

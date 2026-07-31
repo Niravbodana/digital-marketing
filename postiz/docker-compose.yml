@@ -25,18 +25,22 @@ services:
       postiz-redis:
         condition: service_healthy
     networks:
-      - postiz-lite
+      postiz-net:
+        aliases:
+          - postiz-app
 
   postiz-postgres:
     image: postgres:17-alpine
-    container_name: postiz-postgres-lite
+    container_name: postiz-postgres
     restart: unless-stopped
     environment:
       POSTGRES_PASSWORD: postiz-password
       POSTGRES_USER: postiz-user
       POSTGRES_DB: postiz-db-local
     networks:
-      - postiz-lite
+      postiz-net:
+        aliases:
+          - postiz-postgres
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postiz-user -d postiz-db-local"]
       interval: 10s
@@ -45,10 +49,12 @@ services:
 
   postiz-redis:
     image: redis:7.2
-    container_name: postiz-redis-lite
+    container_name: postiz-redis
     restart: unless-stopped
     networks:
-      - postiz-lite
+      postiz-net:
+        aliases:
+          - postiz-redis
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
       interval: 10s
@@ -56,5 +62,5 @@ services:
       retries: 5
 
 networks:
-  postiz-lite:
+  postiz-net:
     driver: bridge

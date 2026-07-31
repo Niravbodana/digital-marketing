@@ -1,75 +1,52 @@
 # Digital Marketing + Postiz MCP
 
-Postiz social media MCP integration for **local Cursor** and **Cloud Agents**.
+## ALL SET START (1 command)
 
-## Quick setup
-
-### 1) Local Postiz verify (your computer)
-
-```bash
-export POSTIZ_API_KEY="your-api-key-from-postiz-settings"
-chmod +x scripts/verify-postiz-local.sh
-./scripts/verify-postiz-local.sh
-```
-
-### 2) Local Cursor MCP (already in `.cursor/mcp.json`)
-
-Set your API key once:
+Apni machine par (jahan Postiz chal raha hai):
 
 ```bash
 export POSTIZ_API_KEY="your-api-key"
+npm start
 ```
 
-Restart Cursor. Two servers are configured:
+Agar `ALL SET START` dikhe, Cursor mein seedha likho:
 
-- `postiz-local` — HTTP at `http://localhost:4007/api/mcp`
-- `postiz-stdio` — `postiz-mcp` npm package (recommended)
+- "Mere connected social accounts dikhao"
+- "Kal 10 baje LinkedIn par post schedule karo"
 
-### 3) Cloud Agent MCP (this chat / cursor.com/agents)
+---
 
-Cloud Agents **cannot** reach `localhost:4007` on your PC. Expose your local Postiz:
+## MCP Config (already done)
+
+`.cursor/mcp.json` mein Postiz configured hai:
+
+- **HTTP:** `http://localhost:4007/api/mcp`
+- **stdio:** `postiz-mcp` npm package
+
+Cursor restart karo after setting `POSTIZ_API_KEY`.
+
+---
+
+## Cloud Agent
 
 ```bash
-chmod +x scripts/expose-postiz-tunnel.sh
-./scripts/expose-postiz-tunnel.sh
+npm run tunnel:postiz
 ```
 
-Copy the `https://*.trycloudflare.com` URL, then in **[cursor.com/agents](https://cursor.com/agents)** → **MCP dropdown** → add:
+Tunnel URL ko [cursor.com/agents](https://cursor.com/agents) MCP dropdown mein add karo.
 
-| Field | Value |
+---
+
+## Postiz MCP Tools (9)
+
+| Tool | Kaam |
 |---|---|
-| Name | `postiz` |
-| Type | HTTP |
-| URL | `https://YOUR-TUNNEL.trycloudflare.com/api/mcp` |
-| Authorization | `Bearer YOUR_POSTIZ_API_KEY` |
-
-Enable it for this run and send a new message.
-
-### Alternative: stdio MCP for Cloud Agent
-
-In **Dashboard → Integrations & MCP** (or agents MCP dropdown), add:
-
-```json
-{
-  "command": "npx",
-  "args": ["-y", "postiz-mcp"],
-  "env": {
-    "POSTIZ_URL": "https://YOUR-TUNNEL.trycloudflare.com",
-    "POSTIZ_API_KEY": "your-api-key",
-    "POSTIZ_ENABLE_WRITE": "false"
-  }
-}
-```
-
-## Cloud environment (optional self-hosted Postiz in VM)
-
-```bash
-cd postiz
-sudo docker compose up -d
-```
-
-`.cursor/environment.json` auto-starts this on future Cloud Agent runs.
-
-## Security
-
-Never commit API keys. Rotate your key if it was shared in chat.
+| `integrationList` | Connected accounts |
+| `groupList` | Groups/customers |
+| `integrationSchema` | Platform rules |
+| `triggerTool` | Platform helpers |
+| `schedulePostTool` | Schedule/publish posts |
+| `generateImageTool` | AI images |
+| `generateVideoOptions` | Video options |
+| `videoFunctionTool` | Video settings |
+| `generateVideoTool` | Generate videos |

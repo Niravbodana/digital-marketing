@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "bash scripts/all-set.sh",
     "verify:postiz": "bash scripts/verify-postiz-local.sh",
     "tunnel:postiz": "bash scripts/expose-postiz-tunnel.sh",
     "postiz:up": "cd postiz && sudo docker compose up -d",
