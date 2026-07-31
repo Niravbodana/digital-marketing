@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ensureDatabase } from "@/lib/db-init";
 import { hashPassword, createToken, setSessionCookie } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getDefaultSignupCredits } from "@/lib/credits";
 
 export async function POST(req: NextRequest) {
   await ensureDatabase();
@@ -16,19 +17,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Email already registered" }, { status: 409 });
   }
 
+  const defaultCredits = await getDefaultSignupCredits();
+  const isFirstUser = (await prisma.user.count()) === 0;
+
   const user = await prisma.user.create({
     data: {
       name,
       email,
       passwordHash: await hashPassword(password),
-      role: email.includes("admin") ? "admin" : "client",
+      role: isFirstUser || email.includes("admin") ? "admin" : "client",
+      credits: defaultCredits,
     },
   });
+
+  if (defaultCredits > 0) {
+    await prisma.creditTransaction.create({
+      data: { userId: user.id, amount: defaultCredits, type: "bonus", description: "Welcome bonus credits" },
+    });
+  }
 
   const token = await createToken(user.id, user.role);
   await setSessionCookie(token);
 
   return NextResponse.json({
-    user: { id: user.id, name: user.name, email: user.email, role: user.role },
+    user: { id: user.id, name: user.name, email: user.email, role: user.role, credits: user.credits },
   });
 }

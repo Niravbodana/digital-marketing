@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { BrandingProvider } from "@/components/BrandingProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -41,7 +42,9 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full scroll-smooth antialiased`}
     >
-      <body className="min-h-full bg-[#030712] text-slate-50">{children}</body>
+      <body className="min-h-full bg-[#030712] text-slate-50">
+        <BrandingProvider>{children}</BrandingProvider>
+      </body>
     </html>
   );
 }

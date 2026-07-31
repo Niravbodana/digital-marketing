@@ -1,64 +1,30 @@
-import { NextRequest, NextResponse } from "next/server";
-import { ensureDatabase } from "@/lib/db-init";
+import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import OpenAI from "openai";
+import { getAllConfig } from "@/lib/config";
 
-async function validateKey(provider: string, key: string): Promise<"online" | "offline"> {
-  if (provider === "openai") {
-    try {
-      const client = new OpenAI({ apiKey: key });
-      await client.models.list();
-      return "online";
-    } catch {
-      return "offline";
-    }
-  }
-  if (provider === "postiz") {
-    try {
-      const url = process.env.POSTIZ_URL || "http://localhost:4007";
-      const res = await fetch(`${url}/api/public/v1/integrations`, {
-        headers: { Authorization: key },
-      });
-      return res.ok ? "online" : "offline";
-    } catch {
-      return "offline";
-    }
-  }
-  return key.length > 10 ? "online" : "offline";
-}
-
+/** Legacy route — redirects to new config-based admin system */
 export async function GET() {
-  await ensureDatabase();
   const user = await getSession();
   if (!user || user.role !== "admin") {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
-  const keys = await prisma.apiKey.findMany({
-    where: { userId: user.id },
-    select: { id: true, provider: true, status: true, lastCheck: true, createdAt: true },
-  });
-  return NextResponse.json({ keys });
+  const configs = await getAllConfig(false);
+  const keys = configs
+    .filter((c) => c.isSecret || ["openai_api_key", "postiz_api_key", "meta_app_secret", "razorpay_key_id"].includes(c.key))
+    .map((c) => ({
+      id: c.key,
+      provider: c.key.replace(/_api_key|_key_id|_app_secret/g, "").replace(/_/g, " "),
+      status: c.value && c.value !== "••••••••" ? "online" : "offline",
+      lastCheck: c.updatedAt,
+    }));
+
+  return NextResponse.json({ keys, message: "Use /api/admin/config for full management" });
 }
 
-export async function POST(req: NextRequest) {
-  await ensureDatabase();
-  const user = await getSession();
-  if (!user) return NextResponse.json({ error: "Login required" }, { status: 401 });
-
-  const { provider, keyValue } = await req.json();
-  if (!provider || !keyValue) {
-    return NextResponse.json({ error: "Provider and key required" }, { status: 400 });
-  }
-
-  const status = await validateKey(provider, keyValue);
-
-  const key = await prisma.apiKey.upsert({
-    where: { userId_provider: { userId: user.id, provider } },
-    create: { userId: user.id, provider, keyValue, status, lastCheck: new Date() },
-    update: { keyValue, status, lastCheck: new Date() },
-  });
-
-  return NextResponse.json({ key: { id: key.id, provider: key.provider, status: key.status } });
+export async function POST() {
+  return NextResponse.json(
+    { error: "API keys are now managed via Admin Panel → Settings. Use POST /api/admin/config" },
+    { status: 410 }
+  );
 }

@@ -41,17 +41,17 @@ export function OutputPanel({ outputs }: { outputs: ToolOutput[] }) {
               <TypeBadge type={o.type} />
             </div>
             <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-neutral-400">{o.content.slice(0, 200)}...</p>
-            <div className="mt-3 flex gap-2">
-              <button
-                onClick={() => downloadFile(o)}
-                className="rounded-lg bg-orange-500 px-4 py-2 text-xs font-semibold text-white hover:bg-orange-400"
-              >
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button onClick={() => downloadFile(o)} className="rounded-lg bg-orange-500 px-4 py-2 text-xs font-semibold text-white hover:bg-orange-400">
                 ⬇ Download
               </button>
-              <button
-                onClick={() => navigator.clipboard.writeText(o.content)}
-                className="rounded-lg border border-white/10 px-4 py-2 text-xs text-neutral-400 hover:text-white"
-              >
+              <button onClick={() => exportFormat(o, "pdf")} className="rounded-lg border border-white/10 px-4 py-2 text-xs text-neutral-400 hover:text-white">
+                PDF
+              </button>
+              <button onClick={() => exportFormat(o, "docx")} className="rounded-lg border border-white/10 px-4 py-2 text-xs text-neutral-400 hover:text-white">
+                DOCX
+              </button>
+              <button onClick={() => navigator.clipboard.writeText(o.content)} className="rounded-lg border border-white/10 px-4 py-2 text-xs text-neutral-400 hover:text-white">
                 Copy
               </button>
             </div>
@@ -85,6 +85,22 @@ function downloadFile(o: ToolOutput) {
   const a = document.createElement("a");
   a.href = url;
   a.download = o.downloadName;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function exportFormat(o: ToolOutput, format: "pdf" | "docx") {
+  const res = await fetch("/api/export", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title: o.title, content: o.content, format }),
+  });
+  if (!res.ok) return;
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${o.title.replace(/[^a-zA-Z0-9]/g, "_")}.${format}`;
   a.click();
   URL.revokeObjectURL(url);
 }

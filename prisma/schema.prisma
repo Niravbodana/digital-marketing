@@ -13,27 +13,96 @@ model User {
   email        String   @unique
   passwordHash String
   role         String   @default("client")
+  credits      Int      @default(100)
+  teamId       String?
+  team         Team?    @relation(fields: [teamId], references: [id])
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   accounts     ConnectedAccount[]
   tasks        Task[]
   posts        Post[]
   agentRuns    AgentRun[]
-  apiKeys      ApiKey[]
+  conversations Conversation[]
+  creditTxns   CreditTransaction[]
+  scheduledJobs ScheduledJob[]
 }
 
-model ApiKey {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  provider  String
-  keyValue  String
-  status    String   @default("unknown")
-  lastCheck DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model SiteConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String   @default("")
+  category    String
+  label       String
+  description String?
+  type        String   @default("text")
+  isSecret    Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  updatedAt   DateTime @updatedAt
+}
 
-  @@unique([userId, provider])
+model Conversation {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String
+  content        String
+  metadata       String?
+  createdAt      DateTime     @default(now())
+}
+
+model CreditTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Int
+  type        String
+  description String?
+  razorpayId  String?
+  status      String   @default("completed")
+  createdAt   DateTime @default(now())
+}
+
+model CreditPackage {
+  id        String   @id @default(cuid())
+  name      String
+  credits   Int
+  priceInr  Int
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  ownerId   String
+  createdAt DateTime @default(now())
+  members   User[]
+}
+
+model ScheduledJob {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId      String?
+  platform    String   @default("instagram")
+  payload     String
+  scheduledAt DateTime
+  status      String   @default("pending")
+  executedAt  DateTime?
+  error       String?
+  createdAt   DateTime @default(now())
 }
 
 model ConnectedAccount {
@@ -79,6 +148,7 @@ model Post {
   hashtags    String?
   imageUrl    String?
   status      String   @default("draft")
+  platforms   String?
   scheduledAt DateTime?
   publishedAt DateTime?
   accountId   String?

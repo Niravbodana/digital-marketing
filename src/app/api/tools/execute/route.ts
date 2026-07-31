@@ -4,21 +4,30 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AGENT_TOOLS } from "@/lib/tools";
 import { executeTool } from "@/lib/tool-executor";
+import { deductCredits } from "@/lib/config";
+import { getCreditCost } from "@/lib/credits";
 
 export async function POST(req: NextRequest) {
   await ensureDatabase();
   const user = await getSession();
-  const { toolId, input, prompt } = await req.json();
+  if (!user) return NextResponse.json({ error: "Login required" }, { status: 401 });
 
+  const { toolId, input, prompt } = await req.json();
   const tool = AGENT_TOOLS.find((t) => t.id === toolId);
-  if (!tool) {
-    return NextResponse.json({ error: "Tool not found" }, { status: 404 });
-  }
+  if (!tool) return NextResponse.json({ error: "Tool not found" }, { status: 404 });
 
   const userInput = input || prompt || "";
+  const costType = tool.outputType === "image" ? "image" : tool.outputType === "video" ? "video" : "text";
+  const cost = await getCreditCost(costType);
+
+  try {
+    await deductCredits(user.id, cost, `${tool.name} generation`);
+  } catch {
+    return NextResponse.json({ error: "Insufficient credits", creditsNeeded: cost }, { status: 402 });
+  }
 
   const run = await prisma.agentRun.create({
-    data: { userId: user?.id, prompt: `${tool.name}: ${userInput}`, status: "thinking" },
+    data: { userId: user.id, prompt: `${tool.name}: ${userInput}`, status: "thinking" },
   });
 
   const steps: Awaited<ReturnType<typeof prisma.agentStep.create>>[] = [];
@@ -31,7 +40,7 @@ export async function POST(req: NextRequest) {
   };
 
   await addStep("thinking", "Understanding request", `Tool: ${tool.name} · ${tool.description}`, 1);
-  await addStep("planning", "Gathering context", `Output type: ${tool.outputType} · Studio: ${tool.studio}`, 2);
+  await addStep("planning", "Gathering context", `Output type: ${tool.outputType} · Studio: ${tool.studio} · ${cost} credits`, 2);
   await addStep("executing", "Creating content", "AI agent generating production-ready output...", 3, "running");
 
   const output = await executeTool(tool, userInput);
@@ -46,7 +55,7 @@ export async function POST(req: NextRequest) {
   if (tool.outputType === "text" || tool.studio === "social") {
     post = await prisma.post.create({
       data: {
-        userId: user?.id,
+        userId: user.id,
         caption: output.content.slice(0, 2200),
         imageUrl: output.imageUrl,
         status: "draft",
@@ -56,7 +65,7 @@ export async function POST(req: NextRequest) {
 
   await prisma.task.create({
     data: {
-      userId: user?.id,
+      userId: user.id,
       prompt: userInput,
       title: tool.name,
       type: tool.id,
@@ -67,7 +76,9 @@ export async function POST(req: NextRequest) {
 
   await prisma.agentRun.update({ where: { id: run.id }, data: { status: "completed" } });
 
-  return NextResponse.json({ output, run: { id: run.id, steps }, post, tool });
+  const updatedUser = await prisma.user.findUnique({ where: { id: user.id }, select: { credits: true } });
+
+  return NextResponse.json({ output, run: { id: run.id, steps }, post, tool, credits: updatedUser?.credits });
 }
 
 export async function GET() {

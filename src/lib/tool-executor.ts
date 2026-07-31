@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import { getConfig, getOpenAIClient } from "./config";
 import { generatePostContent } from "./ai";
 import type { AgentTool } from "./tools";
 
@@ -12,17 +12,12 @@ export type ToolOutput = {
   metadata?: Record<string, string>;
 };
 
-function getClient() {
-  const key = process.env.OPENAI_API_KEY;
-  if (!key || key.startsWith("sk-your")) return null;
-  return new OpenAI({ apiKey: key });
-}
-
 async function aiGenerate(system: string, user: string): Promise<string> {
-  const client = getClient();
+  const client = await getOpenAIClient();
   if (client) {
+    const model = (await getConfig("openai_model")) || "gpt-4o-mini";
     const res = await client.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      model,
       messages: [
         { role: "system", content: system },
         { role: "user", content: user },
@@ -31,13 +26,31 @@ async function aiGenerate(system: string, user: string): Promise<string> {
     });
     return res.choices[0]?.message?.content || "";
   }
-  return `[AI Mock Output]\n\nGenerated content for: ${user}\n\nThis is a production-ready draft. Add OPENAI_API_KEY for full AI generation.\n\n---\nBodana Digital Creation Engine`;
+  return `[AI Mock Output]\n\nGenerated content for: ${user}\n\nAdd OpenAI API key in Admin Panel → AI & Models for full generation.\n\n---\nBodana Digital Creation Engine`;
 }
 
-export async function executeTool(
-  tool: AgentTool,
-  userInput: string
-): Promise<ToolOutput> {
+async function generateImage(prompt: string, title: string): Promise<string> {
+  const client = await getOpenAIClient();
+  const dalleEnabled = await getConfig("dalle_enabled");
+  if (client && dalleEnabled === "true") {
+    try {
+      const res = await client.images.generate({
+        model: "dall-e-3",
+        prompt: prompt.slice(0, 1000),
+        n: 1,
+        size: "1024x1024",
+      });
+      const url = res.data?.[0]?.url;
+      if (url) return url;
+    } catch {
+      // fall through to placeholder
+    }
+  }
+  const seed = encodeURIComponent((title || prompt).slice(0, 20));
+  return `https://picsum.photos/seed/${seed}/1080/1080`;
+}
+
+export async function executeTool(tool: AgentTool, userInput: string): Promise<ToolOutput> {
   const topic = userInput.trim() || "your project";
   const fullPrompt = `${tool.prompt} ${topic}`;
 
@@ -47,14 +60,14 @@ export async function executeTool(
         "You are an expert image prompt engineer. Write a detailed DALL-E/Midjourney style prompt. Return only the prompt, no explanation.",
         fullPrompt
       );
-      const seed = encodeURIComponent(topic.slice(0, 20));
+      const imageUrl = await generateImage(promptDetail, tool.name);
       return {
         type: "image",
         title: tool.name,
         content: promptDetail,
         downloadName: `${tool.id}-prompt.txt`,
         mimeType: "text/plain",
-        imageUrl: `https://picsum.photos/seed/${seed}/1080/1080`,
+        imageUrl,
         metadata: { prompt: promptDetail },
       };
     }
@@ -129,13 +142,14 @@ export async function executeTool(
     default: {
       if (tool.studio === "social") {
         const { caption, hashtags } = await generatePostContent(topic);
+        const imageUrl = await generateImage(caption, tool.name);
         return {
           type: "text",
           title: tool.name,
           content: `${caption}\n\n${hashtags.map((h) => `#${h}`).join(" ")}`,
           downloadName: `${tool.id}-post.txt`,
           mimeType: "text/plain",
-          imageUrl: `https://picsum.photos/seed/s${Date.now()}/1080/1080`,
+          imageUrl,
         };
       }
       const text = await aiGenerate(

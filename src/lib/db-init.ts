@@ -15,4 +15,6 @@ export async function ensureDatabase() {
     });
     ready = true;
   }
+  const { initializeApp } = await import("./init");
+  await initializeApp();
 }

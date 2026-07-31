@@ -1,14 +1,17 @@
 const META_GRAPH = "https://graph.facebook.com/v21.0";
 
-export function isMetaConfigured() {
-  return !!(process.env.META_APP_ID && process.env.META_APP_SECRET);
+import { getConfig } from "./config";
+
+export async function isMetaConfigured() {
+  const appId = await getConfig("meta_app_id");
+  const secret = await getConfig("meta_app_secret");
+  return !!(appId && secret);
 }
 
-export function getAuthUrl(state: string) {
-  const appId = process.env.META_APP_ID!;
+export async function getAuthUrl(state: string) {
+  const appId = await getConfig("meta_app_id");
   const redirectUri = encodeURIComponent(
-    process.env.META_REDIRECT_URI ||
-      `${process.env.NEXT_PUBLIC_APP_URL}/api/instagram/callback`
+    (await getConfig("meta_redirect_uri")) || `${await getConfig("app_url")}/api/instagram/callback`
   );
   const scopes = [
     "instagram_basic",
@@ -22,11 +25,11 @@ export function getAuthUrl(state: string) {
 }
 
 export async function exchangeCodeForToken(code: string) {
-  const appId = process.env.META_APP_ID!;
-  const appSecret = process.env.META_APP_SECRET!;
+  const appId = await getConfig("meta_app_id");
+  const appSecret = await getConfig("meta_app_secret");
   const redirectUri =
-    process.env.META_REDIRECT_URI ||
-    `${process.env.NEXT_PUBLIC_APP_URL}/api/instagram/callback`;
+    (await getConfig("meta_redirect_uri")) ||
+    `${await getConfig("app_url")}/api/instagram/callback`;
 
   const url = `${META_GRAPH}/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&redirect_uri=${encodeURIComponent(redirectUri)}&code=${code}`;
   const res = await fetch(url);
@@ -36,8 +39,8 @@ export async function exchangeCodeForToken(code: string) {
 }
 
 export async function getLongLivedToken(shortToken: string) {
-  const appId = process.env.META_APP_ID!;
-  const appSecret = process.env.META_APP_SECRET!;
+  const appId = await getConfig("meta_app_id");
+  const appSecret = await getConfig("meta_app_secret");
   const url = `${META_GRAPH}/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortToken}`;
   const res = await fetch(url);
   const data = await res.json();

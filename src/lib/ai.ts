@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { z } from "zod";
+import { getConfig, getOpenAIClient } from "./config";
 
 const TaskIntentSchema = z.object({
   action: z.enum([
@@ -23,17 +24,16 @@ const TaskIntentSchema = z.object({
 export type TaskIntent = z.infer<typeof TaskIntentSchema>;
 
 function getClient() {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey || apiKey.startsWith("sk-your")) return null;
-  return new OpenAI({ apiKey });
+  return null; // use getOpenAIClient async instead
 }
 
-export function hasAiConfigured() {
-  return !!getClient();
+export async function hasAiConfigured() {
+  const key = await getConfig("openai_api_key");
+  return !!key && !key.startsWith("sk-your");
 }
 
 export async function parsePrompt(prompt: string): Promise<TaskIntent> {
-  const client = getClient();
+  const client = await getOpenAIClient();
 
   const systemPrompt = `You are Bodana Digital AI assistant. Parse user marketing prompts into structured actions.
 Return JSON only with: action, title, caption (optional), hashtags (array, optional), topic, tone, scheduleHint, reply (friendly confirmation message in same language as user).
@@ -42,7 +42,7 @@ Actions: generate_post, schedule_post, connect_instagram, list_accounts, publish
   if (client) {
     try {
       const res = await client.chat.completions.create({
-        model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+        model: (await getConfig("openai_model")) || "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: prompt },
@@ -106,11 +106,11 @@ function ruleBasedParse(prompt: string): TaskIntent {
 }
 
 export async function generatePostContent(topic: string, tone = "engaging") {
-  const client = getClient();
+  const client = await getOpenAIClient();
 
   if (client) {
     const res = await client.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      model: (await getConfig("openai_model")) || "gpt-4o-mini",
       messages: [
         {
           role: "system",
