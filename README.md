@@ -1,88 +1,64 @@
-# Bodana Digital — Full AI Marketing Platform
+# Bodana Digital — AI Command Centre
 
-Landing page + **AI Studio Dashboard** with prompt-driven tasks, Instagram preview, and end-to-end account connect.
+Premium marketing platform with login, AI agent, 50 tools, Instagram connect, live preview.
 
-## Features (A to Z)
+## Fix: "Task table does not exist" error
 
-| Feature | Status |
-|---|---|
-| AI prompt → auto task start | ✅ |
-| Caption & hashtag generation | ✅ |
-| Instagram live preview | ✅ |
-| Quick tools panel | ✅ |
-| Demo Instagram connect | ✅ |
-| Real Instagram OAuth (Meta) | ✅ (needs Meta App) |
-| Publish to Instagram | ✅ |
-| Task history | ✅ |
-| Postiz cross-post API | ✅ (optional) |
+```bash
+npm run setup
+# OR
+npx prisma db push
+npm run dev
+```
+
+The `dev` script now auto-runs `prisma db push` before starting.
 
 ## Quick Start
 
 ```bash
 npm install
 cp .env.example .env
-# Add your OPENAI_API_KEY in .env
 npm run dev
 ```
 
-Open:
-- **Landing:** http://localhost:3000
-- **AI Studio:** http://localhost:3000/dashboard
+| Page | URL |
+|---|---|
+| Sign Up | http://localhost:3000/signup |
+| Login | http://localhost:3000/login |
+| **Command Centre** | http://localhost:3000/dashboard |
+| Admin (API Keys) | http://localhost:3000/admin |
 
-## Environment Variables
+## Features
+
+- **Login / Signup** — full auth flow
+- **Command Prompt** — type anything, agent thinks → plans → executes
+- **Thinking Panel** — live thinking/planning/executing boxes
+- **50 Agent Tools** — content, image, video, SEO, code, strategy
+- **Instagram Connect** — username + password login modal
+- **Account Details** — followers, posts, bio, full stats
+- **Live Preview** — Instagram post preview
+- **Admin Panel** — API keys with ONLINE/OFFLINE status
+- **Publish** — demo + real Meta OAuth
+
+## Environment
 
 ```env
 DATABASE_URL="file:./dev.db"
-OPENAI_API_KEY="sk-..."          # Your AI API key
-OPENAI_MODEL="gpt-4o-mini"
-
-# Real Instagram OAuth (optional)
-META_APP_ID=""
+OPENAI_API_KEY="sk-..."       # Optional — mock AI works without
+JWT_SECRET="your-secret"
+META_APP_ID=""                # Optional — for real Instagram OAuth
 META_APP_SECRET=""
-META_REDIRECT_URI="http://localhost:3000/api/instagram/callback"
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
-
-# Postiz (optional)
-POSTIZ_API_KEY=""
-POSTIZ_URL="http://localhost:4007"
 ```
 
-## How to Use (Prompt Only)
+## Flow
 
-Go to `/dashboard` and type:
+1. **Sign up** at `/signup`
+2. **Login** → `/dashboard`
+3. **Connect Instagram** — username + password
+4. **Type prompt** — "Instagram post banao"
+5. Watch **Agent Intelligence** panel (thinking → planning → executing)
+6. See **Live Preview** → **Publish**
 
-- `Instagram ke liye fitness post banao`
-- `Kal subah 10 baje motivational post schedule karo`
-- `Digital marketing hashtags generate karo`
-- `Instagram account connect karo`
-- `Post publish karo`
+## Admin API Keys
 
-## Instagram Real Connect Setup
-
-1. Create app at [developers.facebook.com](https://developers.facebook.com)
-2. Add **Instagram Graph API** product
-3. Add OAuth redirect: `http://localhost:3000/api/instagram/callback`
-4. Set `META_APP_ID` and `META_APP_SECRET` in `.env`
-5. Click **Connect Instagram (Real)** in dashboard
-
-> Instagram account must be **Business** or **Creator**, linked to a Facebook Page.
-
-## Demo Mode
-
-Without Meta credentials, click **Demo Account Connect** — full flow works (generate, preview, publish simulated).
-
-## Deploy
-
-```bash
-npm run build
-npm start
-```
-
-Deploy to Vercel — add env vars in dashboard.
-
-## Tech Stack
-
-- Next.js 16 · TypeScript · Tailwind CSS v4
-- Prisma · SQLite
-- OpenAI API
-- Meta Instagram Graph API
+Go to `/admin` → add OpenAI key → shows **● ONLINE** if working.

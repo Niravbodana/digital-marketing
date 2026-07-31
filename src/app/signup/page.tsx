@@ -27,7 +27,7 @@ export default function SignupPage() {
       setLoading(false);
       return;
     }
-    router.push("/dashboard");
+    router.push("/studio");
   }
 
   return (
