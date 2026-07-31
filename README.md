@@ -2,6 +2,11 @@
 
 A modern, premium marketing website for **Bodana Digital** — growth-driven digital marketing by Nirav Bodana.
 
+> **New repository:** This branch is the standalone website. To publish as its own repo:
+> 1. Create `bodana-digital` on GitHub
+> 2. `git remote set-url origin https://github.com/Niravbodana/bodana-digital.git`
+> 3. `git push -u origin main`
+
 ## Features
 
 - Responsive dark-theme design
